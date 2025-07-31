@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "nome": "Limpeza de Pele"
+  },
+  {
+    "id": 2,
+    "nome": "Peeling Químico"
+  },
+  {
+    "id": 3,
+    "nome": "Microagulhamento"
+  },
+  {
+    "id": 4,
+    "nome": "Toxina Botulínica"
+  },
+  {
+    "id": 5,
+    "nome": "Preenchimento Facial"
+  },
+  {
+    "id": 6,
+    "nome": "Laser"
+  },
+  {
+    "id": 7,
+    "nome": "Radiofrequência"
+  },
+  {
+    "id": 8,
+    "nome": "Ultrassom Microfocado"
+  },
+  {
+    "id": 9,
+    "nome": "Carboxiterapia"
+  },
+  {
+    "id": 10,
+    "nome": "Drenagem Linfática"
+  },
+  {
+    "id": 11,
+    "nome": "Massagem Modeladora"
+  },
+  {
+    "id": 12,
+    "nome": "Criolipólise"
+  },
+  {
+    "id": 13,
+    "nome": "Depilação a Laser"
+  }
+]

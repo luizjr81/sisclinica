@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header">
+    <h1>Painel Principal</h1>
+    <button class="menu-btn" onclick="window.location.href='{{ url_for('logout') }}'">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2a2 2 0 012 2v2h-2V4H4v16h10v-2h2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2h10z"/>
+        </svg>
+    </button>
+</div>
+
+<div class="content">
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="stats-card">
+        <h3>Pacientes Cadastrados</h3>
+        <div class="value">{{ stats.total_pacientes }}</div>
+    </div>
+    
+    <div class="stats-card">
+        <h3>Atendimentos de Hoje</h3>
+        <div class="value">{{ stats.atendimentos_hoje }}</div>
+    </div>
+    
+    <div class="stats-card">
+        <h3>Vendas do Dia</h3>
+        <div class="value">{{ stats.vendas_hoje }}</div>
+    </div>
+    
+    <div class="stats-card">
+        <h3>Próximos Atendimentos</h3>
+        <div class="value">{{ stats.proximos_atendimentos }}</div>
+    </div>
+</div>
+
+<div class="nav-bottom">
+    <a href="{{ url_for('dashboard') }}" class="nav-item active">
+        <div class="nav-icon">🏠</div>
+        Início
+    </a>
+    <a href="{{ url_for('pacientes') }}" class="nav-item">
+        <div class="nav-icon">👥</div>
+        Pacientes
+    </a>
+    <a href="{{ url_for('novo_atendimento') }}" class="nav-item">
+        <div class="nav-icon">📅</div>
+        Atendimentos
+    </a>
+    <a href="{{ url_for('nova_venda') }}" class="nav-item">
+        <div class="nav-icon">💰</div>
+        Vendas
+    </a>
+    <a href="{{ url_for('procedimentos') }}" class="nav-item">
+        <div class="nav-icon">📊</div>
+        Procedimentos
+    </a>
+</div>
+{% endblock %}

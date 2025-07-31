@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "paciente_id": 1,
+    "data": "31/07/2025",
+    "hora": "18:23",
+    "observacoes": "alergia dipirona",
+    "anamnese": "",
+    "created_at": "2025-07-31T18:23:15.417484"
+  },
+  {
+    "id": 2,
+    "paciente_id": 1,
+    "data": "31/07/2025",
+    "hora": "18:26",
+    "observacoes": "Limpeza oele",
+    "anamnese": "Tudo ok",
+    "created_at": "2025-07-31T18:26:35.484743"
+  }
+]
