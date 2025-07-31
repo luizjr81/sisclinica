@@ -22,23 +22,49 @@
         <div class="form-group">
             <label for="paciente_id">Paciente</label>
             <select id="paciente_id" name="paciente_id" class="form-control" required>
-                <option value="">Selecione o paciente</option>
+                <option value="">Selecione um paciente</option>
                 {% for paciente in pacientes %}
-                    <option value="{{ paciente.id }}">{{ paciente.nome }} - {{ paciente.telefone }}</option>
+                    <option value="{{ paciente.id }}" data-observacoes="{{ paciente.observacoes }}">{{ paciente.nome }} ({{ paciente.codigo }})</option>
                 {% endfor %}
             </select>
         </div>
-        
+
         <div class="form-group">
-            <label for="observacoes">Observações</label>
-            <textarea id="observacoes" name="observacoes" class="form-control" 
-                      placeholder="Adicione observações"></textarea>
+            <label for="observacoes_paciente">Observações do Paciente</label>
+            <textarea id="observacoes_paciente" class="form-control bg-gray" readonly></textarea>
         </div>
-        
+
         <div class="form-group">
-            <label for="anamnese">Anamnese</label>
-            <textarea id="anamnese" name="anamnese" class="form-control" 
-                      placeholder="Preencha a anamnese"></textarea>
+            <label for="data_atendimento">Data do Atendimento</label>
+            <input type="date" id="data_atendimento" name="data_atendimento" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="procedimento_id">Procedimentos</label>
+            <div style="display: flex; gap: 8px;">
+                <select id="procedimento_id" class="form-control">
+                    <option value="">Selecione um procedimento</option>
+                    {% for procedimento in procedimentos %}
+                        <option value="{{ procedimento.id }}" data-valor="{{ procedimento.valor }}">{{ procedimento.nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" id="add_procedimento" class="btn btn-primary">Adicionar</button>
+            </div>
+        </div>
+
+        <div id="procedimentos_adicionados">
+            <!-- Procedimentos adicionados aparecerão aqui -->
+        </div>
+
+        <div class="form-group">
+            <label for="atendimento">Atendimento</label>
+            <textarea id="atendimento" name="atendimento" class="form-control" placeholder="Relate o que foi feito"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="valor_total">Valor Total</label>
+            <input type="text" id="valor_total" name="valor_total" class="form-control" readonly>
+            <input type="hidden" id="procedimentos_selecionados" name="procedimentos_selecionados">
         </div>
     </div>
     
@@ -47,8 +73,75 @@
             Cancelar
         </button>
         <button type="submit" class="btn btn-primary">
-            Salvar
+            Salvar Atendimento
         </button>
     </div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pacienteSelect = document.getElementById('paciente_id');
+    const observacoesTextarea = document.getElementById('observacoes_paciente');
+    const procedimentoSelect = document.getElementById('procedimento_id');
+    const addProcedimentoBtn = document.getElementById('add_procedimento');
+    const procedimentosAdicionadosDiv = document.getElementById('procedimentos_adicionados');
+    const valorTotalInput = document.getElementById('valor_total');
+    const procedimentosSelecionadosInput = document.getElementById('procedimentos_selecionados');
+    let procedimentosAdicionados = [];
+    let total = 0;
+
+    pacienteSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const observacoes = selectedOption.getAttribute('data-observacoes');
+        observacoesTextarea.value = observacoes || '';
+    });
+
+    addProcedimentoBtn.addEventListener('click', function() {
+        const selectedOption = procedimentoSelect.options[procedimentoSelect.selectedIndex];
+        if (!selectedOption.value) return;
+
+        const id = selectedOption.value;
+        const nome = selectedOption.text;
+        const valor = parseFloat(selectedOption.getAttribute('data-valor'));
+
+        procedimentosAdicionados.push({ id, nome, valor });
+        total += valor;
+
+        renderProcedimentos();
+        updateTotal();
+    });
+
+    function renderProcedimentos() {
+        procedimentosAdicionadosDiv.innerHTML = '';
+        procedimentosAdicionados.forEach((proc, index) => {
+            const procDiv = document.createElement('div');
+            procDiv.className = 'list-item';
+            procDiv.innerHTML = `
+                <div class="list-item-content">
+                    <div class="list-item-title">${proc.nome}</div>
+                    <div class="list-item-subtitle">R$ ${proc.valor.toFixed(2)}</div>
+                </div>
+                <button type="button" class="btn btn-danger remove-procedimento" data-index="${index}">Remover</button>
+            `;
+            procedimentosAdicionadosDiv.appendChild(procDiv);
+        });
+
+        document.querySelectorAll('.remove-procedimento').forEach(button => {
+            button.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                const removed = procedimentosAdicionados.splice(index, 1);
+                total -= removed[0].valor;
+                renderProcedimentos();
+                updateTotal();
+            });
+        });
+
+        procedimentosSelecionadosInput.value = JSON.stringify(procedimentosAdicionados.map(p => p.id));
+    }
+
+    function updateTotal() {
+        valorTotalInput.value = `R$ ${total.toFixed(2)}`;
+    }
+});
+</script>
 {% endblock %}

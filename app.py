@@ -342,7 +342,8 @@ def atualizar_paciente(id):
 def novo_atendimento():
     """Formulário de novo atendimento"""
     pacientes = load_json_file(PACIENTES_FILE)
-    return render_template('novo_atendimento.html', pacientes=pacientes)
+    procedimentos = load_json_file(PROCEDIMENTOS_FILE)
+    return render_template('novo_atendimento.html', pacientes=pacientes, procedimentos=procedimentos)
 
 @app.route('/atendimento/salvar', methods=['POST'])
 @requires_auth
@@ -350,14 +351,18 @@ def salvar_atendimento():
     """Salva novo atendimento"""
     try:
         paciente_id = int(sanitize_input(request.form.get('paciente_id', 0)))
-        observacoes = sanitize_input(request.form.get('observacoes', ''))
-        anamnese = sanitize_input(request.form.get('anamnese', ''))
-        
+        data_atendimento = sanitize_input(request.form.get('data_atendimento', ''))
+        procedimentos_selecionados_str = request.form.get('procedimentos_selecionados', '[]')
+        atendimento_relato = sanitize_input(request.form.get('atendimento', ''))
+        valor_total_str = sanitize_input(request.form.get('valor_total', 'R$ 0,00'))
+
+        procedimentos_selecionados = json.loads(procedimentos_selecionados_str)
+        valor_total = float(valor_total_str.replace('R$', '').replace('.', '').replace(',', '.').strip())
+
         if paciente_id <= 0:
             flash('Selecione um paciente válido')
             return redirect(url_for('novo_atendimento'))
         
-        # Verificar se paciente existe
         pacientes = load_json_file(PACIENTES_FILE)
         paciente_existe = any(p['id'] == paciente_id for p in pacientes)
         
@@ -365,20 +370,16 @@ def salvar_atendimento():
             flash('Paciente não encontrado')
             return redirect(url_for('novo_atendimento'))
         
-        # Carregar atendimentos
         atendimentos = load_json_file(ATENDIMENTOS_FILE)
-        
-        # Gerar novo ID
         novo_id = max([a.get('id', 0) for a in atendimentos], default=0) + 1
         
-        # Criar novo atendimento
         novo_atendimento = {
             'id': novo_id,
             'paciente_id': paciente_id,
-            'data': datetime.now().strftime('%d/%m/%Y'),
-            'hora': datetime.now().strftime('%H:%M'),
-            'observacoes': observacoes,
-            'anamnese': anamnese,
+            'data': data_atendimento,
+            'procedimentos': procedimentos_selecionados,
+            'atendimento': atendimento_relato,
+            'valor_total': valor_total,
             'created_at': datetime.now().isoformat()
         }
         
@@ -392,7 +393,7 @@ def salvar_atendimento():
         return redirect(url_for('dashboard'))
         
     except Exception as e:
-        flash('Erro interno do servidor')
+        flash(f'Erro interno do servidor: {e}')
         return redirect(url_for('novo_atendimento'))
 
 @app.route('/procedimentos')
