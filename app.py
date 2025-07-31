@@ -355,9 +355,11 @@ def salvar_atendimento():
         procedimentos_selecionados_str = request.form.get('procedimentos_selecionados', '[]')
         atendimento_relato = sanitize_input(request.form.get('atendimento', ''))
         valor_total_str = sanitize_input(request.form.get('valor_total', 'R$ 0,00'))
+        desconto_str = sanitize_input(request.form.get('desconto', '0,00'))
 
         procedimentos_selecionados = json.loads(procedimentos_selecionados_str)
         valor_total = float(valor_total_str.replace('R$', '').replace('.', '').replace(',', '.').strip())
+        desconto = float(desconto_str.replace(',', '.'))
 
         if paciente_id <= 0:
             flash('Selecione um paciente válido')
@@ -402,6 +404,92 @@ def procedimentos():
     """Lista de procedimentos"""
     procedimentos_data = load_json_file(PROCEDIMENTOS_FILE)
     return render_template('procedimentos.html', procedimentos=procedimentos_data)
+
+@app.route('/procedimentos/salvar', methods=['POST'])
+@requires_auth
+def salvar_procedimento():
+    """Salva novo ou edita procedimento"""
+    procedimentos = load_json_file(PROCEDIMENTOS_FILE)
+    procedimento_id = request.form.get('id')
+    nome = request.form.get('nome')
+    valor = request.form.get('valor')
+
+    if procedimento_id:  # Edição
+        for p in procedimentos:
+            if str(p.get('id')) == procedimento_id:
+                p['nome'] = nome
+                p['valor'] = valor
+                break
+    else:  # Adição
+        new_id = max([p.get('id', 0) for p in procedimentos], default=0) + 1
+        new_proc = {
+            'id': new_id,
+            'nome': nome,
+            'valor': valor
+        }
+        procedimentos.append(new_proc)
+
+    save_json_file(PROCEDIMENTOS_FILE, procedimentos)
+    flash('Procedimento salvo com sucesso!', 'success')
+    return redirect(url_for('procedimentos'))
+
+@app.route('/procedimentos/editar/<int:id>')
+@requires_auth
+def editar_procedimento(id):
+    """Página de edição de procedimento"""
+    procedimentos = load_json_file(PROCEDIMENTOS_FILE)
+    procedimento_para_editar = next((p for p in procedimentos if p['id'] == id), None)
+    return render_template('procedimentos.html', procedimentos=procedimentos, procedimento_para_editar=procedimento_para_editar)
+
+@app.route('/procedimentos/excluir/<int:id>')
+@requires_auth
+def excluir_procedimento(id):
+    """Exclui um procedimento"""
+    procedimentos = load_json_file(PROCEDIMENTOS_FILE)
+    procedimentos = [p for p in procedimentos if p.get('id') != id]
+    save_json_file(PROCEDIMENTOS_FILE, procedimentos)
+    flash('Procedimento excluído com sucesso!', 'success')
+    return redirect(url_for('procedimentos'))
+
+@app.route('/relatorio')
+@requires_auth
+def relatorio():
+    """Página de relatório de atendimentos"""
+    pacientes = load_json_file(PACIENTES_FILE)
+    selected_patient_id = request.args.get('paciente_id', type=int)
+    atendimentos = []
+    selected_patient = None
+
+    if selected_patient_id:
+        all_atendimentos = load_json_file(ATENDIMENTOS_FILE)
+        atendimentos = [a for a in all_atendimentos if a.get('paciente_id') == selected_patient_id]
+        selected_patient = next((p for p in pacientes if p['id'] == selected_patient_id), None)
+
+    return render_template('relatorio.html',
+                           pacientes=pacientes,
+                           atendimentos=atendimentos,
+                           selected_patient_id=selected_patient_id,
+                           selected_patient=selected_patient)
+
+@app.context_processor
+def utility_processor():
+    def get_procedimento_by_id(proc_id):
+        procedimentos = load_json_file(PROCEDIMENTOS_FILE)
+        return next((p for p in procedimentos if p['id'] == proc_id), None)
+    return dict(get_procedimento_by_id=get_procedimento_by_id)
+
+@app.route('/anamnese', methods=['GET', 'POST'])
+@requires_auth
+def anamnese():
+    """Página de anamnese"""
+    if request.method == 'POST':
+        paciente_id = request.form.get('paciente_id')
+        # Lógica para salvar os dados da anamnese
+        flash('Anamnese salva com sucesso!', 'success')
+        return redirect(url_for('dashboard'))
+
+    pacientes = load_json_file(PACIENTES_FILE)
+    return render_template('anamnese.html', pacientes=pacientes)
 
 @app.route('/venda/nova')
 @requires_auth

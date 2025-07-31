@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header">
+    <button class="back-btn" onclick="window.location.href='{{ url_for('dashboard') }}'">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+    </button>
+    <h1>Relatório de Atendimentos</h1>
+</div>
+
+<div class="content">
+    <form method="GET" action="{{ url_for('relatorio') }}">
+        <div class="form-group">
+            <label for="paciente_id">Selecione o Paciente</label>
+            <select id="paciente_id" name="paciente_id" class="form-control" onchange="this.form.submit()">
+                <option value="">Selecione um paciente</option>
+                {% for paciente in pacientes %}
+                    <option value="{{ paciente.id }}" {% if paciente.id == selected_patient_id %}selected{% endif %}>{{ paciente.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if atendimentos %}
+        <div class="stats-card">
+            <h3>Atendimentos de {{ selected_patient.nome }}</h3>
+            {% for atendimento in atendimentos %}
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div class="list-item-title">Atendimento #{{ atendimento.id }} - {{ atendimento.data }}</div>
+                        <div class="list-item-subtitle">
+                            <strong>Procedimentos:</strong>
+                            <ul>
+                                {% for proc_id in atendimento.procedimentos %}
+                                    {% set procedimento = get_procedimento_by_id(proc_id) %}
+                                    <li>{{ procedimento.nome }} - R$ {{ "%.2f"|format(procedimento.valor|float) }}</li>
+                                {% endfor %}
+                            </ul>
+                            <strong>Valor Total:</strong> R$ {{ "%.2f"|format(atendimento.valor_total|float) }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif selected_patient_id %}
+        <div class="stats-card">
+            <p>Nenhum atendimento encontrado para este paciente.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -62,6 +62,11 @@
         </div>
 
         <div class="form-group">
+            <label for="desconto">Desconto (R$)</label>
+            <input type="text" id="desconto" name="desconto" class="form-control" value="0.00">
+        </div>
+
+        <div class="form-group">
             <label for="valor_total">Valor Total</label>
             <input type="text" id="valor_total" name="valor_total" class="form-control" readonly>
             <input type="hidden" id="procedimentos_selecionados" name="procedimentos_selecionados">
@@ -87,6 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const procedimentosAdicionadosDiv = document.getElementById('procedimentos_adicionados');
     const valorTotalInput = document.getElementById('valor_total');
     const procedimentosSelecionadosInput = document.getElementById('procedimentos_selecionados');
+    const descontoInput = document.getElementById('desconto');
     let procedimentosAdicionados = [];
     let total = 0;
 
@@ -105,11 +111,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const valor = parseFloat(selectedOption.getAttribute('data-valor'));
 
         procedimentosAdicionados.push({ id, nome, valor });
-        total += valor;
 
         renderProcedimentos();
         updateTotal();
     });
+
+    descontoInput.addEventListener('input', updateTotal);
 
     function renderProcedimentos() {
         procedimentosAdicionadosDiv.innerHTML = '';
@@ -129,8 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.remove-procedimento').forEach(button => {
             button.addEventListener('click', function() {
                 const index = parseInt(this.getAttribute('data-index'));
-                const removed = procedimentosAdicionados.splice(index, 1);
-                total -= removed[0].valor;
+                procedimentosAdicionados.splice(index, 1);
                 renderProcedimentos();
                 updateTotal();
             });
@@ -140,7 +146,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateTotal() {
-        valorTotalInput.value = `R$ ${total.toFixed(2)}`;
+        total = procedimentosAdicionados.reduce((sum, p) => sum + p.valor, 0);
+        const desconto = parseFloat(descontoInput.value.replace(',', '.')) || 0;
+        const valorFinal = total - desconto;
+        valorTotalInput.value = `R$ ${valorFinal.toFixed(2)}`;
     }
 });
 </script>
