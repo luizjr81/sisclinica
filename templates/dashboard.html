@@ -60,10 +60,6 @@
         <div class="nav-icon">📊</div>
         Procedimentos
     </a>
-    <a href="{{ url_for('manutencao_usuarios') }}" class="nav-item">
-        <div class="nav-icon">⚙️</div>
-        Usuários
-    </a>
     <a href="{{ url_for('relatorio') }}" class="nav-item">
         <div class="nav-icon">📄</div>
         Relatório
@@ -76,5 +72,11 @@
         <div class="nav-icon">💰</div>
         Pag. Pendentes
     </a>
+    {% if perfil == 'admin' %}
+    <a href="{{ url_for('manutencao') }}" class="nav-item">
+        <div class="nav-icon">🔧</div>
+        Manutenção
+    </a>
+    {% endif %}
 </div>
 {% endblock %}

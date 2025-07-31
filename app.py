@@ -125,14 +125,14 @@ def init_data_files():
 
 # Autenticação simples
 def check_auth(email, password):
-    """Verifica credenciais do usuário"""
+    """Verifica credenciais do usuário e retorna o perfil"""
     usuarios = load_json_file(USUARIOS_FILE)
     password_hash = hashlib.sha256(password.encode()).hexdigest()
     
     for usuario in usuarios:
         if usuario['email'] == email and usuario['password_hash'] == password_hash:
-            return True
-    return False
+            return usuario.get('perfil', 'usuario')
+    return None
 
 def requires_auth(f):
     """Decorator para rotas que requerem autenticação"""
@@ -155,9 +155,11 @@ def auth():
     email = sanitize_input(request.form.get('email', ''))
     password = sanitize_input(request.form.get('password', ''))
     
-    if check_auth(email, password):
+    perfil = check_auth(email, password)
+    if perfil:
         response = redirect(url_for('dashboard'))
         response.set_cookie('logged_in', 'true', max_age=86400)  # 24 horas
+        response.set_cookie('perfil', perfil, max_age=86400)
         return response
     else:
         flash('Credenciais inválidas')
@@ -177,6 +179,7 @@ def dashboard():
     pacientes = load_json_file(PACIENTES_FILE)
     atendimentos = load_json_file(ATENDIMENTOS_FILE)
     vendas = load_json_file(VENDAS_FILE)
+    perfil = request.cookies.get('perfil')
     
     # Estatísticas do dia
     hoje = datetime.now().strftime('%d/%m/%Y')
@@ -191,7 +194,7 @@ def dashboard():
         'proximos_atendimentos': 3  # Placeholder
     }
     
-    return render_template('dashboard.html', stats=stats)
+    return render_template('dashboard.html', stats=stats, perfil=perfil)
 
 @app.route('/pacientes')
 @requires_auth
@@ -606,10 +609,65 @@ def utility_processor_2():
         return next((p for p in pacientes if p['id'] == patient_id), None)
     return dict(get_patient_by_id=get_patient_by_id)
 
+@app.route('/manutencao')
+@requires_auth
+def manutencao():
+    """Página de manutenção"""
+    perfil = request.cookies.get('perfil')
+    if perfil != 'admin':
+        flash('Acesso não autorizado')
+        return redirect(url_for('dashboard'))
+    return render_template('manutencao.html')
+
+@app.route('/registros_sistema')
+@requires_auth
+def registros_sistema():
+    """Página de registros do sistema"""
+    perfil = request.cookies.get('perfil')
+    if perfil != 'admin':
+        flash('Acesso não autorizado')
+        return redirect(url_for('dashboard'))
+
+    vendas = load_json_file(VENDAS_FILE)
+    atendimentos = load_json_file(ATENDIMENTOS_FILE)
+    return render_template('registros.html', vendas=vendas, atendimentos=atendimentos)
+
+@app.route('/registros/excluir/<string:tipo>/<int:id>', methods=['POST'])
+@requires_auth
+def excluir_registro(tipo, id):
+    """Exclui um registro do sistema"""
+    perfil = request.cookies.get('perfil')
+    if perfil != 'admin':
+        flash('Acesso não autorizado')
+        return redirect(url_for('dashboard'))
+
+    password = request.form.get('password')
+    user_email = request.cookies.get('email') # Assumindo que o email está no cookie
+    if not check_auth(user_email, password):
+        flash('Senha incorreta!')
+        return redirect(url_for('registros_sistema'))
+
+    if tipo == 'venda':
+        vendas = load_json_file(VENDAS_FILE)
+        vendas = [v for v in vendas if v.get('id') != id]
+        save_json_file(VENDAS_FILE, vendas)
+        flash('Venda excluída com sucesso!')
+    elif tipo == 'atendimento':
+        atendimentos = load_json_file(ATENDIMENTOS_FILE)
+        atendimentos = [a for a in atendimentos if a.get('id') != id]
+        save_json_file(ATENDIMENTOS_FILE, atendimentos)
+        flash('Atendimento excluído com sucesso!')
+
+    return redirect(url_for('registros_sistema'))
+
 # Rota para a página de manutenção de usuários
 @app.route('/manutencao/usuarios')
 @requires_auth
 def manutencao_usuarios():
+    perfil = request.cookies.get('perfil')
+    if perfil != 'admin':
+        flash('Acesso não autorizado')
+        return redirect(url_for('dashboard'))
     usuarios = load_json_file(USUARIOS_FILE)
     return render_template('manutencao_usuarios.html', usuarios=usuarios)
 
