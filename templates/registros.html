@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header">
+    <button class="back-btn" onclick="window.location.href='{{ url_for('manutencao') }}'">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+    </button>
+    <h1>Registros do Sistema</h1>
+</div>
+
+<div class="content">
+    <h3>Vendas</h3>
+    {% for venda in vendas %}
+    <div class="list-item">
+        <div class="list-item-content">
+            <div class="list-item-title">Venda #{{ venda.id }}</div>
+            <div class="list-item-subtitle">Paciente: {{ get_patient_by_id(venda.paciente_id).nome }} - Valor: R$ {{ "%.2f"|format(venda.valor_total|float) }}</div>
+        </div>
+        <div>
+            <a href="#" class="btn btn-danger" onclick="confirmDelete('venda', {{ venda.id }})">Excluir</a>
+        </div>
+    </div>
+    {% endfor %}
+
+    <h3>Atendimentos</h3>
+    {% for atendimento in atendimentos %}
+    <div class="list-item">
+        <div class="list-item-content">
+            <div class="list-item-title">Atendimento #{{ atendimento.id }}</div>
+            <div class="list-item-subtitle">Paciente: {{ get_patient_by_id(atendimento.paciente_id).nome }} - Data: {{ atendimento.data }}</div>
+        </div>
+        <div>
+            <a href="#" class="btn btn-danger" onclick="confirmDelete('atendimento', {{ atendimento.id }})">Excluir</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function confirmDelete(type, id) {
+    const password = prompt("Para confirmar a exclusão, digite sua senha de administrador:");
+    if (password) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/registros/excluir/${type}/${id}`;
+
+        const passwordInput = document.createElement('input');
+        passwordInput.type = 'hidden';
+        passwordInput.name = 'password';
+        passwordInput.value = password;
+        form.appendChild(passwordInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}
