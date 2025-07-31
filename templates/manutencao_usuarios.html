@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header">
+    <a href="{{ url_for('dashboard') }}" class="back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </a>
+    <h1>Manutenção de Usuários</h1>
+</div>
+
+<div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="stats-card">
+        <h3>Adicionar Novo Usuário</h3>
+        <form method="POST" action="{{ url_for('salvar_usuario') }}">
+            <input type="hidden" name="id" value="">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Senha (deixe em branco para não alterar)</label>
+                <input type="password" id="password" name="password" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="perfil">Perfil</label>
+                <select id="perfil" name="perfil" class="form-control">
+                    <option value="admin">Administrador</option>
+                    <option value="usuario">Usuário</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+    </div>
+
+    <div class="stats-card">
+        <h3>Usuários Cadastrados</h3>
+        <ul class="list-group">
+            {% for usuario in usuarios %}
+            <li class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-title">{{ usuario.email }}</div>
+                    <div class="list-item-subtitle">Perfil: {{ usuario.perfil }} | Status: {% if usuario.ativo %}Ativo{% else %}Inativo{% endif %}</div>
+                </div>
+                <div>
+                    <a href="{{ url_for('editar_usuario', id=usuario.id) }}" class="btn btn-secondary">Editar</a>
+                    {% if usuario.ativo %}
+                    <a href="{{ url_for('desativar_usuario', id=usuario.id) }}" class="btn btn-secondary">Desativar</a>
+                    {% else %}
+                    <a href="{{ url_for('ativar_usuario', id=usuario.id) }}" class="btn btn-secondary">Ativar</a>
+                    {% endif %}
+                    <a href="{{ url_for('excluir_usuario', id=usuario.id) }}" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este usuário?')">Excluir</a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
