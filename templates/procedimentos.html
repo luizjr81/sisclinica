@@ -7,25 +7,49 @@
         </svg>
     </button>
     <h1>Procedimentos</h1>
-    <button class="menu-btn">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-        </svg>
-    </button>
 </div>
 
 <div class="content">
-    {% for procedimento in procedimentos %}
-        <div class="list-item">
-            <div class="list-item-content">
-                <div class="list-item-title">{{ procedimento.nome }}</div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="stats-card">
+        <h3>Adicionar/Editar Procedimento</h3>
+        <form method="POST" action="{{ url_for('salvar_procedimento') }}">
+            <input type="hidden" name="id" value="{{ procedimento_para_editar.id if procedimento_para_editar else '' }}">
+            <div class="form-group">
+                <label for="nome">Nome do Procedimento</label>
+                <input type="text" id="nome" name="nome" class="form-control" value="{{ procedimento_para_editar.nome if procedimento_para_editar else '' }}" required>
             </div>
-            <div class="select-arrow">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                </svg>
+            <div class="form-group">
+                <label for="valor">Valor</label>
+                <input type="text" id="valor" name="valor" class="form-control" value="{{ procedimento_para_editar.valor if procedimento_para_editar else '' }}" required>
             </div>
-        </div>
-    {% endfor %}
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+    </div>
+
+    <div class="stats-card">
+        <h3>Procedimentos Cadastrados</h3>
+        <ul class="list-group">
+            {% for procedimento in procedimentos %}
+            <li class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-title">{{ procedimento.nome }}</div>
+                    <div class="list-item-subtitle">R$ {{ "%.2f"|format(procedimento.valor|float) if procedimento.valor else '0.00' }}</div>
+                </div>
+                <div>
+                    <a href="{{ url_for('editar_procedimento', id=procedimento.id) }}" class="btn btn-secondary">Editar</a>
+                    <a href="{{ url_for('excluir_procedimento', id=procedimento.id) }}" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este procedimento?')">Excluir</a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>
 {% endblock %}
