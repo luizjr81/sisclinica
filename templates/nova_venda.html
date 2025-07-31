@@ -6,92 +6,144 @@
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
         </svg>
     </button>
-    <h1>Registro de Vendas</h1>
+    <h1>Registrar Pagamento</h1>
 </div>
 
-<form method="POST" action="{{ url_for('salvar_venda') }}" style="flex: 1; display: flex; flex-direction: column;">
-    <div class="content">
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-danger">{{ message }}</div>
+<div class="content">
+    <form method="POST" action="{{ url_for('salvar_venda') }}">
+        <div class="form-group">
+            <label for="paciente_id">Paciente</label>
+            <select id="paciente_id" name="paciente_id" class="form-control" onchange="this.form.submit()">
+                <option value="">Selecione um paciente</option>
+                {% for paciente in pacientes %}
+                    <option value="{{ paciente.id }}" {% if paciente.id == selected_patient_id %}selected{% endif %}>{{ paciente.nome }}</option>
                 {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        <div class="form-group">
-            <label for="data_atendimento">Data do Atendimento</label>
-            <input type="text" id="data_atendimento" name="data_atendimento" class="form-control bg-gray" 
-                   placeholder="DD/MM/AAAA" maxlength="10" required>
+            </select>
         </div>
-        
-        <div class="form-group">
-            <label for="valor_bruto">Valor Bruto</label>
-            <input type="text" id="valor_bruto" name="valor_bruto" class="form-control bg-gray" 
-                   placeholder="R$ 0,00" required>
-        </div>
-        
-        <div class="form-group">
-            <label>Forma de Pagamento</label>
-            <div class="radio-group">
-                <div class="radio-item">
-                    <input type="radio" id="pix" name="forma_pagamento" value="pix" required>
-                    <label for="pix">Pix</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" id="debito" name="forma_pagamento" value="debito">
-                    <label for="debito">Débito</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" id="credito" name="forma_pagamento" value="credito">
-                    <label for="credito">Crédito</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" id="especie" name="forma_pagamento" value="especie">
-                    <label for="especie">Espécie</label>
-                </div>
-                <div class="radio-item">
-                    <input type="radio" id="transferencia" name="forma_pagamento" value="transferencia">
-                    <label for="transferencia">Transferência</label>
-                </div>
+
+        {% if atendimentos %}
+            <div class="form-group">
+                <label for="atendimento_id">Atendimento a Pagar</label>
+                <select id="atendimento_id" name="atendimento_id" class="form-control">
+                    <option value="">Selecione um atendimento</option>
+                    {% for atendimento in atendimentos %}
+                        <option value="{{ atendimento.id }}" data-valor="{{ atendimento.valor_total }}">
+                            Atendimento #{{ atendimento.id }} - R$ {{ "%.2f"|format(atendimento.valor_total|float) }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-        </div>
-        
-        <div class="form-group">
-            <label for="observacoes">Observações</label>
-            <textarea id="observacoes" name="observacoes" class="form-control bg-gray" 
-                      placeholder="Adicione informações relevantes"></textarea>
-        </div>
-    </div>
-    
-    <div class="btn-group">
-        <button type="button" class="btn btn-secondary" onclick="window.location.href='{{ url_for('dashboard') }}'">
-            Cancelar
-        </button>
-        <button type="submit" class="btn btn-primary">
-            Salvar
-        </button>
-    </div>
-</form>
+
+            <div id="payment-details" style="display: none;">
+                <div class="form-group">
+                    <label>Valor Total do Atendimento</label>
+                    <input type="text" id="valor_atendimento" class="form-control" readonly>
+                </div>
+
+                <div id="pagamentos_adicionados"></div>
+
+                <div class="form-group">
+                    <label for="forma_pagamento">Forma de Pagamento</label>
+                    <select id="forma_pagamento" class="form-control">
+                        <option value="pix">Pix</option>
+                        <option value="debito">Débito</option>
+                        <option value="credito">Crédito</option>
+                        <option value="especie">Espécie</option>
+                        <option value="transferencia">Transferência</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="valor_pago">Valor a Pagar</label>
+                    <input type="text" id="valor_pago" class="form-control">
+                </div>
+
+                <button type="button" id="add_pagamento" class="btn btn-primary">Adicionar Pagamento</button>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label>Total Pago</label>
+                    <input type="text" id="total_pago" class="form-control" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Restante</label>
+                    <input type="text" id="valor_restante" name="valor_restante" class="form-control" readonly>
+                </div>
+
+                <input type="hidden" name="pagamentos" id="pagamentos_json">
+                <button type="submit" class="btn btn-primary">Finalizar Pagamento</button>
+            </div>
+        {% elif selected_patient_id %}
+            <p>Nenhum atendimento com pagamento pendente para este paciente.</p>
+        {% endif %}
+    </form>
+</div>
 
 <script>
-// Máscara para data
-document.getElementById('data_atendimento').addEventListener('input', function(e) {
-    let value = e.target.value.replace(/\D/g, '');
-    value = value.replace(/(\d{2})(\d)/, '$1/$2');
-    value = value.replace(/(\d{2})(\d)/, '$1/$2');
-    e.target.value = value;
-});
+document.addEventListener('DOMContentLoaded', function() {
+    const atendimentoSelect = document.getElementById('atendimento_id');
+    const paymentDetails = document.getElementById('payment-details');
+    const valorAtendimentoInput = document.getElementById('valor_atendimento');
+    const addPagamentoBtn = document.getElementById('add_pagamento');
+    const pagamentosAdicionadosDiv = document.getElementById('pagamentos_adicionados');
+    const totalPagoInput = document.getElementById('total_pago');
+    const valorRestanteInput = document.getElementById('valor_restante');
+    const pagamentosJsonInput = document.getElementById('pagamentos_json');
 
-// Máscara para valor
-document.getElementById('valor_bruto').addEventListener('input', function(e) {
-    let value = e.target.value.replace(/\D/g, '');
-    value = (parseFloat(value) / 100).toFixed(2);
-    value = 'R$ ' + value.replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-    e.target.value = value;
-});
+    let valorTotalAtendimento = 0;
+    let pagamentos = [];
 
-// Definir data atual
-document.getElementById('data_atendimento').value = new Date().toLocaleDateString('pt-BR');
+    atendimentoSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (!selectedOption.value) {
+            paymentDetails.style.display = 'none';
+            return;
+        }
+
+        valorTotalAtendimento = parseFloat(selectedOption.getAttribute('data-valor'));
+        valorAtendimentoInput.value = `R$ ${valorTotalAtendimento.toFixed(2)}`;
+        paymentDetails.style.display = 'block';
+        updateSummary();
+    });
+
+    addPagamentoBtn.addEventListener('click', function() {
+        const formaPagamento = document.getElementById('forma_pagamento').value;
+        const valorPago = parseFloat(document.getElementById('valor_pago').value);
+
+        if (isNaN(valorPago) || valorPago <= 0) {
+            alert('Insira um valor de pagamento válido.');
+            return;
+        }
+
+        pagamentos.push({ forma: formaPagamento, valor: valorPago });
+        document.getElementById('valor_pago').value = '';
+        renderPagamentos();
+        updateSummary();
+    });
+
+    function renderPagamentos() {
+        pagamentosAdicionadosDiv.innerHTML = '<h4>Pagamentos Adicionados</h4>';
+        pagamentos.forEach((p, index) => {
+            pagamentosAdicionadosDiv.innerHTML += `<p>${p.forma}: R$ ${p.valor.toFixed(2)} <button type="button" class="remove-pagamento" data-index="${index}">X</button></p>`;
+        });
+
+        document.querySelectorAll('.remove-pagamento').forEach(btn => {
+            btn.addEventListener('click', function() {
+                pagamentos.splice(this.dataset.index, 1);
+                renderPagamentos();
+                updateSummary();
+            });
+        });
+    }
+
+    function updateSummary() {
+        const totalPago = pagamentos.reduce((acc, p) => acc + p.valor, 0);
+        const valorRestante = valorTotalAtendimento - totalPago;
+
+        totalPagoInput.value = `R$ ${totalPago.toFixed(2)}`;
+        valorRestanteInput.value = `R$ ${valorRestante.toFixed(2)}`;
+        pagamentosJsonInput.value = JSON.stringify(pagamentos);
+    }
+});
 </script>
 {% endblock %}
