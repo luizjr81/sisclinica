@@ -398,6 +398,96 @@ def salvar_venda():
         flash('Erro interno do servidor')
         return redirect(url_for('nova_venda'))
 
+# Rota para a página de manutenção de usuários
+@app.route('/manutencao/usuarios')
+@requires_auth
+def manutencao_usuarios():
+    usuarios = load_json_file(USUARIOS_FILE)
+    return render_template('manutencao_usuarios.html', usuarios=usuarios)
+
+# Rota para salvar (adicionar/editar) um usuário
+@app.route('/manutencao/usuarios/salvar', methods=['POST'])
+@requires_auth
+def salvar_usuario():
+    usuarios = load_json_file(USUARIOS_FILE)
+    user_id = request.form.get('id')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    perfil = request.form.get('perfil')
+
+    if user_id:  # Edição
+        for usuario in usuarios:
+            if str(usuario.get('id')) == user_id:
+                usuario['email'] = email
+                if password:
+                    usuario['password_hash'] = hashlib.sha256(password.encode()).hexdigest()
+                usuario['perfil'] = perfil
+                break
+    else:  # Adição
+        new_id = max([u.get('id', 0) for u in usuarios], default=0) + 1
+        new_user = {
+            'id': new_id,
+            'email': email,
+            'password_hash': hashlib.sha256(password.encode()).hexdigest(),
+            'perfil': perfil,
+            'ativo': True,
+            'created_at': datetime.now().isoformat()
+        }
+        usuarios.append(new_user)
+
+    save_json_file(USUARIOS_FILE, usuarios)
+    flash('Usuário salvo com sucesso!', 'success')
+    return redirect(url_for('manutencao_usuarios'))
+
+# Rota para editar um usuário
+@app.route('/manutencao/usuarios/editar/<int:id>')
+@requires_auth
+def editar_usuario(id):
+    usuarios = load_json_file(USUARIOS_FILE)
+    usuario_para_editar = None
+    for usuario in usuarios:
+        if usuario.get('id') == id:
+            usuario_para_editar = usuario
+            break
+
+    return render_template('manutencao_usuarios.html', usuarios=usuarios, usuario_para_editar=usuario_para_editar)
+
+# Rota para desativar um usuário
+@app.route('/manutencao/usuarios/desativar/<int:id>')
+@requires_auth
+def desativar_usuario(id):
+    usuarios = load_json_file(USUARIOS_FILE)
+    for usuario in usuarios:
+        if usuario.get('id') == id:
+            usuario['ativo'] = False
+            break
+    save_json_file(USUARIOS_FILE, usuarios)
+    flash('Usuário desativado com sucesso!', 'success')
+    return redirect(url_for('manutencao_usuarios'))
+
+# Rota para ativar um usuário
+@app.route('/manutencao/usuarios/ativar/<int:id>')
+@requires_auth
+def ativar_usuario(id):
+    usuarios = load_json_file(USUARIOS_FILE)
+    for usuario in usuarios:
+        if usuario.get('id') == id:
+            usuario['ativo'] = True
+            break
+    save_json_file(USUARIOS_FILE, usuarios)
+    flash('Usuário ativado com sucesso!', 'success')
+    return redirect(url_for('manutencao_usuarios'))
+
+# Rota para excluir um usuário
+@app.route('/manutencao/usuarios/excluir/<int:id>')
+@requires_auth
+def excluir_usuario(id):
+    usuarios = load_json_file(USUARIOS_FILE)
+    usuarios = [u for u in usuarios if u.get('id') != id]
+    save_json_file(USUARIOS_FILE, usuarios)
+    flash('Usuário excluído com sucesso!', 'success')
+    return redirect(url_for('manutencao_usuarios'))
+
 if __name__ == '__main__':
     init_data_files()
     app.run(debug=True, host='0.0.0.0', port=5000)
