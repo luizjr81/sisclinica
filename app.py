@@ -491,67 +491,120 @@ def anamnese():
     pacientes = load_json_file(PACIENTES_FILE)
     return render_template('anamnese.html', pacientes=pacientes)
 
-@app.route('/venda/nova')
+@app.route('/venda/nova', methods=['GET', 'POST'])
 @requires_auth
 def nova_venda():
     """Formulário de nova venda"""
-    return render_template('nova_venda.html')
+    pacientes = load_json_file(PACIENTES_FILE)
+    selected_patient_id = request.args.get('paciente_id', type=int)
+    atendimentos = []
+
+    if selected_patient_id:
+        all_atendimentos = load_json_file(ATENDIMENTOS_FILE)
+        atendimentos = [a for a in all_atendimentos if a.get('paciente_id') == selected_patient_id and a.get('status_pagamento') != 'pago']
+
+    return render_template('nova_venda.html',
+                           pacientes=pacientes,
+                           atendimentos=atendimentos,
+                           selected_patient_id=selected_patient_id)
 
 @app.route('/venda/salvar', methods=['POST'])
 @requires_auth
 def salvar_venda():
     """Salva nova venda"""
     try:
-        data_atendimento = sanitize_input(request.form.get('data_atendimento', ''))
-        valor_bruto = sanitize_input(request.form.get('valor_bruto', ''))
-        forma_pagamento = sanitize_input(request.form.get('forma_pagamento', ''))
-        observacoes = sanitize_input(request.form.get('observacoes', ''))
-        
-        # Validations
-        if not validate_date(data_atendimento):
-            flash('Data inválida (use DD/MM/AAAA)')
-            return redirect(url_for('nova_venda'))
-        
-        try:
-            valor = float(valor_bruto.replace('R$', '').replace('.', '').replace(',', '.').strip())
-            if valor <= 0:
-                raise ValueError()
-        except ValueError:
-            flash('Valor inválido')
-            return redirect(url_for('nova_venda'))
-        
-        if forma_pagamento not in ['pix', 'debito', 'credito', 'especie', 'transferencia']:
-            flash('Forma de pagamento inválida')
-            return redirect(url_for('nova_venda'))
-        
-        # Carregar vendas
+        atendimento_id = int(request.form.get('atendimento_id'))
+        pagamentos_json = request.form.get('pagamentos_json', '[]')
+        pagamentos = json.loads(pagamentos_json)
+        valor_restante = float(request.form.get('valor_restante', '0.0').replace('R$', '').replace('.', '').replace(',', '.'))
+
         vendas = load_json_file(VENDAS_FILE)
-        
-        # Gerar novo ID
+        atendimentos = load_json_file(ATENDIMENTOS_FILE)
+
+        atendimento = next((a for a in atendimentos if a['id'] == atendimento_id), None)
+        if not atendimento:
+            flash('Atendimento não encontrado!')
+            return redirect(url_for('nova_venda'))
+
         novo_id = max([v.get('id', 0) for v in vendas], default=0) + 1
-        
-        # Criar nova venda
         nova_venda = {
             'id': novo_id,
-            'data': data_atendimento,
-            'valor': valor,
-            'forma_pagamento': forma_pagamento,
-            'observacoes': observacoes,
+            'atendimento_id': atendimento_id,
+            'paciente_id': atendimento['paciente_id'],
+            'pagamentos': pagamentos,
+            'valor_total': atendimento['valor_total'],
+            'valor_restante': valor_restante,
+            'status': 'pendente' if valor_restante > 0 else 'pago',
             'created_at': datetime.now().isoformat()
         }
-        
         vendas.append(nova_venda)
-        
-        if save_json_file(VENDAS_FILE, vendas):
-            flash('Venda registrada com sucesso!')
-        else:
-            flash('Erro ao salvar venda')
-        
+
+        atendimento['status_pagamento'] = 'pago' if valor_restante == 0 else 'parcial'
+        save_json_file(ATENDIMENTOS_FILE, atendimentos)
+        save_json_file(VENDAS_FILE, vendas)
+
+        flash('Pagamento registrado com sucesso!')
         return redirect(url_for('dashboard'))
         
     except Exception as e:
-        flash('Erro interno do servidor')
+        flash(f'Erro interno do servidor: {e}')
         return redirect(url_for('nova_venda'))
+
+@app.route('/pagamentos_pendentes')
+@requires_auth
+def pagamentos_pendentes():
+    """Página de pagamentos pendentes"""
+    query = request.args.get('q', '').lower()
+    vendas = load_json_file(VENDAS_FILE)
+    pacientes = load_json_file(PACIENTES_FILE)
+
+    pendentes = [v for v in vendas if v.get('status') == 'pendente']
+
+    if query:
+        pendentes = [v for v in pendentes if query in get_patient_by_id(v.get('paciente_id')).get('nome', '').lower()]
+
+    return render_template('pagamentos_pendentes.html', vendas=pendentes)
+
+@app.route('/pagamento/finalizar/<int:id>', methods=['GET', 'POST'])
+@requires_auth
+def finalizar_pagamento(id):
+    """Página para finalizar pagamento"""
+    vendas = load_json_file(VENDAS_FILE)
+    venda = next((v for v in vendas if v['id'] == id), None)
+
+    if not venda:
+        flash('Venda não encontrada!')
+        return redirect(url_for('pagamentos_pendentes'))
+
+    if request.method == 'POST':
+        # Lógica para adicionar mais pagamentos e finalizar a venda
+        pagamentos_json = request.form.get('pagamentos_json', '[]')
+        novos_pagamentos = json.loads(pagamentos_json)
+        venda['pagamentos'].extend(novos_pagamentos)
+
+        total_pago = sum(p['valor'] for p in venda['pagamentos'])
+        venda['valor_restante'] = venda['valor_total'] - total_pago
+
+        if venda['valor_restante'] <= 0:
+            venda['status'] = 'pago'
+            atendimentos = load_json_file(ATENDIMENTOS_FILE)
+            atendimento = next((a for a in atendimentos if a['id'] == venda['atendimento_id']), None)
+            if atendimento:
+                atendimento['status_pagamento'] = 'pago'
+                save_json_file(ATENDIMENTOS_FILE, atendimentos)
+
+        save_json_file(VENDAS_FILE, vendas)
+        flash('Pagamento atualizado com sucesso!')
+        return redirect(url_for('pagamentos_pendentes'))
+
+    return render_template('finalizar_pagamento.html', venda=venda)
+
+@app.context_processor
+def utility_processor_2():
+    def get_patient_by_id(patient_id):
+        pacientes = load_json_file(PACIENTES_FILE)
+        return next((p for p in pacientes if p['id'] == patient_id), None)
+    return dict(get_patient_by_id=get_patient_by_id)
 
 # Rota para a página de manutenção de usuários
 @app.route('/manutencao/usuarios')
