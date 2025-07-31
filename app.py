@@ -196,9 +196,21 @@ def dashboard():
 @app.route('/pacientes')
 @requires_auth
 def pacientes():
-    """Lista de pacientes"""
+    """Lista de pacientes com busca"""
+    query = request.args.get('q', '').lower()
     pacientes_data = load_json_file(PACIENTES_FILE)
-    return render_template('pacientes.html', pacientes=pacientes_data)
+
+    if query:
+        pacientes_filtrados = [
+            p for p in pacientes_data if
+            query in p.get('nome', '').lower() or
+            query in p.get('cpf', '') or
+            query in p.get('codigo', '').lower()
+        ]
+    else:
+        pacientes_filtrados = pacientes_data
+
+    return render_template('pacientes.html', pacientes=pacientes_filtrados)
 
 @app.route('/paciente/novo')
 @requires_auth
@@ -217,6 +229,7 @@ def salvar_paciente():
         data_nascimento = sanitize_input(request.form.get('data_nascimento', ''))
         telefone = sanitize_input(request.form.get('telefone', ''))
         gosto_musical = sanitize_input(request.form.get('gosto_musical', ''))
+        observacoes = sanitize_input(request.form.get('observacoes', ''))
         
         # Validações
         if not nome or len(nome) < 2:
@@ -244,17 +257,20 @@ def salvar_paciente():
                 flash('CPF já cadastrado')
                 return redirect(url_for('novo_paciente'))
         
-        # Gerar novo ID
+        # Gerar novo ID e código de paciente
         novo_id = max([p.get('id', 0) for p in pacientes], default=0) + 1
-        
+        codigo_paciente = f"PAC-{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
+
         # Criar novo paciente
         novo_paciente = {
             'id': novo_id,
+            'codigo': codigo_paciente,
             'nome': nome,
             'cpf': cpf,
             'data_nascimento': data_nascimento,
             'telefone': telefone,
             'gosto_musical': gosto_musical,
+            'observacoes': observacoes,
             'created_at': datetime.now().isoformat()
         }
         
@@ -270,6 +286,56 @@ def salvar_paciente():
     except Exception as e:
         flash('Erro interno do servidor')
         return redirect(url_for('novo_paciente'))
+
+@app.route('/paciente/editar/<int:id>')
+@requires_auth
+def editar_paciente(id):
+    """Página de edição de paciente"""
+    pacientes = load_json_file(PACIENTES_FILE)
+    paciente = next((p for p in pacientes if p['id'] == id), None)
+    if paciente:
+        return render_template('editar_paciente.html', paciente=paciente)
+    else:
+        flash('Paciente não encontrado')
+        return redirect(url_for('pacientes'))
+
+@app.route('/paciente/atualizar/<int:id>', methods=['POST'])
+@requires_auth
+def atualizar_paciente(id):
+    """Atualiza dados do paciente"""
+    try:
+        nome = sanitize_input(request.form.get('nome', ''))
+        cpf = sanitize_input(request.form.get('cpf', ''))
+        data_nascimento = sanitize_input(request.form.get('data_nascimento', ''))
+        telefone = sanitize_input(request.form.get('telefone', ''))
+        gosto_musical = sanitize_input(request.form.get('gosto_musical', ''))
+        observacoes = sanitize_input(request.form.get('observacoes', ''))
+
+        if not nome or len(nome) < 2:
+            flash('Nome deve ter pelo menos 2 caracteres')
+            return redirect(url_for('editar_paciente', id=id))
+
+        pacientes = load_json_file(PACIENTES_FILE)
+        for paciente in pacientes:
+            if paciente['id'] == id:
+                paciente['nome'] = nome
+                paciente['cpf'] = cpf
+                paciente['data_nascimento'] = data_nascimento
+                paciente['telefone'] = telefone
+                paciente['gosto_musical'] = gosto_musical
+                paciente['observacoes'] = observacoes
+                break
+
+        if save_json_file(PACIENTES_FILE, pacientes):
+            flash('Paciente atualizado com sucesso!')
+        else:
+            flash('Erro ao atualizar paciente')
+
+        return redirect(url_for('pacientes'))
+
+    except Exception as e:
+        flash('Erro interno do servidor')
+        return redirect(url_for('editar_paciente', id=id))
 
 @app.route('/atendimento/novo')
 @requires_auth
