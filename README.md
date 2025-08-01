@@ -48,7 +48,7 @@ Sistema simples e seguro para gestão de atendimentos em clínicas de estética,
 
 ### 1. Clonar/Baixar os arquivos
 ```bash
-# Baixe os arquivos: app.py e generate_templates.py
+# Baixe os arquivos: app.py e criatemplates.py
 ```
 
 ### 2. Instalar dependências
@@ -58,7 +58,7 @@ pip install -r requirements.txt
 
 ### 3. Gerar templates
 ```bash
-python generate_templates.py
+python criatemplates.py
 ```
 
 ### 4. Executar aplicação
