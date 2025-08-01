@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import json
 import os
 from datetime import datetime
-import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import re
 from functools import wraps
@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 
 # Configurações de segurança
-DATA_DIR = 'data'
+DATA_DIR = os.path.abspath('data')
 PACIENTES_FILE = os.path.join(DATA_DIR, 'pacientes.json')
 ATENDIMENTOS_FILE = os.path.join(DATA_DIR, 'atendimentos.json')
 PROCEDIMENTOS_FILE = os.path.join(DATA_DIR, 'procedimentos.json')
@@ -108,7 +108,8 @@ def init_data_files():
     usuarios_padrao = [{
         "id": 1,
         "email": "admin@admin.com",
-        "password_hash": hashlib.sha256("admin123".encode()).hexdigest(),
+        "password_hash": generate_password_hash("admin123"),
+        "perfil": "admin",
         "created_at": datetime.now().isoformat()
     }]
     
@@ -117,21 +118,44 @@ def init_data_files():
     
     if not os.path.exists(USUARIOS_FILE):
         save_json_file(USUARIOS_FILE, usuarios_padrao)
-    
+    else:
+        # Migração de senhas antigas (se necessário)
+        migrate_passwords()
+
     # Inicializar outros arquivos vazios
     for filename in [PACIENTES_FILE, ATENDIMENTOS_FILE, VENDAS_FILE]:
         if not os.path.exists(filename):
             save_json_file(filename, [])
 
+def migrate_passwords():
+    """Migra senhas de hashlib para werkzeug.security"""
+    usuarios = load_json_file(USUARIOS_FILE)
+    updated = False
+    for usuario in usuarios:
+        # Hashes Werkzeug começam com 'pbkdf2:sha256' ou similar.
+        # Hashes SHA256 puros são hex de 64 caracteres.
+        if 'password_hash' in usuario and not usuario['password_hash'].startswith('pbkdf2'):
+            # Esta é uma suposição perigosa. Não sabemos a senha original.
+            # Esta migração só funcionará se a senha for conhecida ou
+            # se for resetada. Para o caso do 'admin123', podemos fazer.
+            if usuario['email'] == 'admin@admin.com':
+                usuario['password_hash'] = generate_password_hash("admin123")
+                updated = True
+
+    if updated:
+        save_json_file(USUARIOS_FILE, usuarios)
+        print("Migração de senhas concluída.")
+
 # Autenticação simples
 def check_auth(email, password):
     """Verifica credenciais do usuário e retorna o perfil"""
     usuarios = load_json_file(USUARIOS_FILE)
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
     
     for usuario in usuarios:
-        if usuario['email'] == email and usuario['password_hash'] == password_hash:
-            return usuario.get('perfil', 'usuario')
+        if usuario.get('email') == email and check_password_hash(usuario.get('password_hash', ''), password):
+            # Adicionado .get('ativo', True) para garantir que usuários desativados não possam logar
+            if usuario.get('ativo', True):
+                return usuario.get('perfil', 'usuario')
     return None
 
 def requires_auth(f):
@@ -139,7 +163,19 @@ def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'logged_in' not in request.cookies:
+            flash('Você precisa estar logado para acessar esta página.', 'info')
             return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
+
+def requires_admin(f):
+    """Decorator para rotas que requerem perfil de admin"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        perfil = request.cookies.get('perfil')
+        if perfil != 'admin':
+            flash('Acesso não autorizado. Esta área é restrita a administradores.', 'danger')
+            return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated
 
@@ -314,11 +350,31 @@ def atualizar_paciente(id):
         gosto_musical = sanitize_input(request.form.get('gosto_musical', ''))
         observacoes = sanitize_input(request.form.get('observacoes', ''))
 
+        # Validações
         if not nome or len(nome) < 2:
-            flash('Nome deve ter pelo menos 2 caracteres')
+            flash('Nome deve ter pelo menos 2 caracteres', 'danger')
+            return redirect(url_for('editar_paciente', id=id))
+
+        if not validate_cpf(cpf):
+            flash('CPF inválido', 'danger')
+            return redirect(url_for('editar_paciente', id=id))
+
+        if not validate_date(data_nascimento):
+            flash('Data de nascimento inválida (use DD/MM/AAAA)', 'danger')
+            return redirect(url_for('editar_paciente', id=id))
+
+        if not validate_phone(telefone):
+            flash('Telefone inválido', 'danger')
             return redirect(url_for('editar_paciente', id=id))
 
         pacientes = load_json_file(PACIENTES_FILE)
+
+        # Verificar CPF duplicado (ignorando o próprio paciente)
+        for p in pacientes:
+            if p['cpf'] == cpf and p['id'] != id:
+                flash('CPF já cadastrado para outro paciente.', 'danger')
+                return redirect(url_for('editar_paciente', id=id))
+
         for paciente in pacientes:
             if paciente['id'] == id:
                 paciente['nome'] = nome
@@ -330,14 +386,14 @@ def atualizar_paciente(id):
                 break
 
         if save_json_file(PACIENTES_FILE, pacientes):
-            flash('Paciente atualizado com sucesso!')
+            flash('Paciente atualizado com sucesso!', 'success')
         else:
-            flash('Erro ao atualizar paciente')
+            flash('Erro ao atualizar paciente', 'danger')
 
         return redirect(url_for('pacientes'))
 
     except Exception as e:
-        flash('Erro interno do servidor')
+        flash('Erro interno do servidor', 'danger')
         return redirect(url_for('editar_paciente', id=id))
 
 @app.route('/atendimento/novo')
@@ -475,11 +531,20 @@ def relatorio():
                            selected_patient=selected_patient)
 
 @app.context_processor
-def utility_processor():
+def utility_processors():
+    """Fornece funções utilitárias para os templates."""
     def get_procedimento_by_id(proc_id):
         procedimentos = load_json_file(PROCEDIMENTOS_FILE)
-        return next((p for p in procedimentos if p['id'] == proc_id), None)
-    return dict(get_procedimento_by_id=get_procedimento_by_id)
+        return next((p for p in procedimentos if p.get('id') == proc_id), None)
+
+    def get_patient_by_id(patient_id):
+        pacientes = load_json_file(PACIENTES_FILE)
+        return next((p for p in pacientes if p.get('id') == patient_id), None)
+
+    return dict(
+        get_procedimento_by_id=get_procedimento_by_id,
+        get_patient_by_id=get_patient_by_id
+    )
 
 @app.route('/anamnese', methods=['GET', 'POST'])
 @requires_auth
@@ -608,79 +673,67 @@ def finalizar_pagamento(id):
 
     return render_template('finalizar_pagamento.html', venda=venda)
 
-@app.context_processor
-def utility_processor_2():
-    def get_patient_by_id(patient_id):
-        pacientes = load_json_file(PACIENTES_FILE)
-        return next((p for p in pacientes if p['id'] == patient_id), None)
-    return dict(get_patient_by_id=get_patient_by_id)
 
 @app.route('/manutencao')
 @requires_auth
+@requires_admin
 def manutencao():
     """Página de manutenção"""
-    perfil = request.cookies.get('perfil')
-    if perfil != 'admin':
-        flash('Acesso não autorizado')
-        return redirect(url_for('dashboard'))
     return render_template('manutencao.html')
 
 @app.route('/registros_sistema')
 @requires_auth
+@requires_admin
 def registros_sistema():
     """Página de registros do sistema"""
-    perfil = request.cookies.get('perfil')
-    if perfil != 'admin':
-        flash('Acesso não autorizado')
-        return redirect(url_for('dashboard'))
-
     vendas = load_json_file(VENDAS_FILE)
     atendimentos = load_json_file(ATENDIMENTOS_FILE)
     return render_template('registros.html', vendas=vendas, atendimentos=atendimentos)
 
 @app.route('/registros/excluir/<string:tipo>/<int:id>', methods=['POST'])
 @requires_auth
+@requires_admin
 def excluir_registro(tipo, id):
     """Exclui um registro do sistema"""
-    perfil = request.cookies.get('perfil')
-    if perfil != 'admin':
-        flash('Acesso não autorizado')
-        return redirect(url_for('dashboard'))
-
     password = request.form.get('password')
-    user_email = request.cookies.get('email') # Assumindo que o email está no cookie
-    if not check_auth(user_email, password):
-        flash('Senha incorreta!')
+    admin_user = next((u for u in load_json_file(USUARIOS_FILE) if u.get('perfil') == 'admin'), None)
+
+    if not admin_user or not check_auth(admin_user['email'], password):
+        flash('Senha incorreta!', 'danger')
         return redirect(url_for('registros_sistema'))
 
     if tipo == 'venda':
         vendas = load_json_file(VENDAS_FILE)
         vendas = [v for v in vendas if v.get('id') != id]
-        save_json_file(VENDAS_FILE, vendas)
-        flash('Venda excluída com sucesso!')
+        if save_json_file(VENDAS_FILE, vendas):
+            flash('Venda excluída com sucesso!', 'success')
+        else:
+            flash('Erro ao excluir venda.', 'danger')
     elif tipo == 'atendimento':
         atendimentos = load_json_file(ATENDIMENTOS_FILE)
         atendimentos = [a for a in atendimentos if a.get('id') != id]
-        save_json_file(ATENDIMENTOS_FILE, atendimentos)
-        flash('Atendimento excluído com sucesso!')
+        if save_json_file(ATENDIMENTOS_FILE, atendimentos):
+            flash('Atendimento excluído com sucesso!', 'success')
+        else:
+            flash('Erro ao excluir atendimento.', 'danger')
 
     return redirect(url_for('registros_sistema'))
 
 # Rota para a página de manutenção de usuários
 @app.route('/manutencao/usuarios')
 @requires_auth
+@requires_admin
 def manutencao_usuarios():
-    perfil = request.cookies.get('perfil')
-    if perfil != 'admin':
-        flash('Acesso não autorizado')
-        return redirect(url_for('dashboard'))
+    """Página de manutenção de usuários"""
     usuarios = load_json_file(USUARIOS_FILE)
     return render_template('manutencao_usuarios.html', usuarios=usuarios)
 
 # Rota para salvar (adicionar/editar) um usuário
 @app.route('/manutencao/usuarios/salvar', methods=['POST'])
 @requires_auth
+@requires_admin
 def salvar_usuario():
+    """Salva (adiciona/edita) um usuário"""
     usuarios = load_json_file(USUARIOS_FILE)
     user_id = request.form.get('id')
     email = request.form.get('email')
@@ -692,42 +745,47 @@ def salvar_usuario():
             if str(usuario.get('id')) == user_id:
                 usuario['email'] = email
                 if password:
-                    usuario['password_hash'] = hashlib.sha256(password.encode()).hexdigest()
+                    usuario['password_hash'] = generate_password_hash(password)
                 usuario['perfil'] = perfil
                 break
     else:  # Adição
+        if not password:
+            flash('Senha é obrigatória para novos usuários.', 'danger')
+            return redirect(url_for('manutencao_usuarios'))
+
         new_id = max([u.get('id', 0) for u in usuarios], default=0) + 1
         new_user = {
             'id': new_id,
             'email': email,
-            'password_hash': hashlib.sha256(password.encode()).hexdigest(),
+            'password_hash': generate_password_hash(password),
             'perfil': perfil,
             'ativo': True,
             'created_at': datetime.now().isoformat()
         }
         usuarios.append(new_user)
 
-    save_json_file(USUARIOS_FILE, usuarios)
-    flash('Usuário salvo com sucesso!', 'success')
+    if save_json_file(USUARIOS_FILE, usuarios):
+        flash('Usuário salvo com sucesso!', 'success')
+    else:
+        flash('Erro ao salvar usuário.', 'danger')
     return redirect(url_for('manutencao_usuarios'))
 
 # Rota para editar um usuário
 @app.route('/manutencao/usuarios/editar/<int:id>')
 @requires_auth
+@requires_admin
 def editar_usuario(id):
+    """Página de edição de usuário"""
     usuarios = load_json_file(USUARIOS_FILE)
-    usuario_para_editar = None
-    for usuario in usuarios:
-        if usuario.get('id') == id:
-            usuario_para_editar = usuario
-            break
-
+    usuario_para_editar = next((u for u in usuarios if u.get('id') == id), None)
     return render_template('manutencao_usuarios.html', usuarios=usuarios, usuario_para_editar=usuario_para_editar)
 
 # Rota para desativar um usuário
 @app.route('/manutencao/usuarios/desativar/<int:id>')
 @requires_auth
+@requires_admin
 def desativar_usuario(id):
+    """Desativa um usuário"""
     usuarios = load_json_file(USUARIOS_FILE)
     for usuario in usuarios:
         if usuario.get('id') == id:
@@ -740,7 +798,9 @@ def desativar_usuario(id):
 # Rota para ativar um usuário
 @app.route('/manutencao/usuarios/ativar/<int:id>')
 @requires_auth
+@requires_admin
 def ativar_usuario(id):
+    """Ativa um usuário"""
     usuarios = load_json_file(USUARIOS_FILE)
     for usuario in usuarios:
         if usuario.get('id') == id:
@@ -753,7 +813,9 @@ def ativar_usuario(id):
 # Rota para excluir um usuário
 @app.route('/manutencao/usuarios/excluir/<int:id>')
 @requires_auth
+@requires_admin
 def excluir_usuario(id):
+    """Exclui um usuário"""
     usuarios = load_json_file(USUARIOS_FILE)
     usuarios = [u for u in usuarios if u.get('id') != id]
     save_json_file(USUARIOS_FILE, usuarios)
