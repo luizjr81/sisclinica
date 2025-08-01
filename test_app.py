@@ -1,5 +1,13 @@
 import pytest
-from app import app as flask_app, init_data_files, save_json_file, USUARIOS_FILE
+from app import (
+    app as flask_app,
+    init_data_files,
+    save_json_file,
+    USUARIOS_FILE,
+    validate_cpf,
+    validate_date,
+    validate_phone
+)
 import os
 import json
 import hashlib
@@ -169,5 +177,113 @@ def test_update_patient_with_invalid_cpf(client, monkeypatch):
         assert b'CPF inv' in response.data  # "CPF inválido"
 
         # Teardown for this specific test
+        if os.path.exists(TEST_PACIENTES_FILE):
+            os.remove(TEST_PACIENTES_FILE)
+
+# --- Testes de Validação ---
+
+@pytest.mark.parametrize("cpf, expected", [
+    ("123.456.789-00", True),
+    ("12345678900", True),
+    ("123.456.789-0", False),
+    ("1234567890", False),
+    ("abcdefghijk", False),
+])
+def test_validate_cpf(cpf, expected):
+    """Testa a função de validação de CPF."""
+    assert validate_cpf(cpf) == expected
+
+@pytest.mark.parametrize("date_str, expected", [
+    ("31/12/2025", True),
+    ("29/02/2024", True), # Ano bissexto
+    ("31/13/2025", False), # Mês inválido
+    ("32/12/2025", False), # Dia inválido
+    ("2025/12/31", False), # Formato errado
+])
+def test_validate_date(date_str, expected):
+    """Testa a função de validação de data."""
+    assert validate_date(date_str) == expected
+
+@pytest.mark.parametrize("phone, expected", [
+    ("(11) 98765-4321", True),
+    ("11987654321", True),
+    ("(11) 8765-4321", True),
+    ("1187654321", True),
+    ("123456789", False), # Curto demais
+    ("123456789012", False), # Longo demais
+])
+def test_validate_phone(phone, expected):
+    """Testa a função de validação de telefone."""
+    assert validate_phone(phone) == expected
+
+# --- Testes de Funcionalidade ---
+
+def test_create_new_patient_successfully(client, monkeypatch):
+    """
+    GIVEN um usuário logado
+    WHEN um novo paciente é criado com dados válidos
+    THEN o paciente deve ser salvo e o usuário redirecionado
+    """
+    with client:
+        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+
+        TEST_PACIENTES_FILE = 'data/test_pacientes.json'
+        monkeypatch.setattr('app.PACIENTES_FILE', TEST_PACIENTES_FILE)
+        # Garante que o arquivo de pacientes de teste está vazio
+        save_json_file(TEST_PACIENTES_FILE, [])
+
+        response = client.post('/paciente/salvar', data={
+            'nome': 'Paciente Teste',
+            'cpf': '11122233344',
+            'data_nascimento': '01/01/1990',
+            'telefone': '11999998888',
+            'gosto_musical': 'Teste',
+            'observacoes': ''
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b'Paciente cadastrado com sucesso!' in response.data
+
+        # Verifica se o paciente foi realmente salvo
+        pacientes = json.load(open(TEST_PACIENTES_FILE))
+        assert len(pacientes) == 1
+        assert pacientes[0]['nome'] == 'Paciente Teste'
+        assert pacientes[0]['cpf'] == '11122233344'
+
+        if os.path.exists(TEST_PACIENTES_FILE):
+            os.remove(TEST_PACIENTES_FILE)
+
+def test_create_patient_with_duplicate_cpf(client, monkeypatch):
+    """
+    GIVEN um paciente já existente
+    WHEN tenta-se criar um novo paciente com o mesmo CPF
+    THEN a criação deve falhar com uma mensagem de erro
+    """
+    with client:
+        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+
+        TEST_PACIENTES_FILE = 'data/test_pacientes.json'
+        monkeypatch.setattr('app.PACIENTES_FILE', TEST_PACIENTES_FILE)
+
+        # Paciente pré-existente
+        existing_patient = {'id': 1, 'nome': 'Já Existe', 'cpf': '11122233344', 'data_nascimento': '01/01/2000', 'telefone': '11999998888'}
+        save_json_file(TEST_PACIENTES_FILE, [existing_patient])
+
+        response = client.post('/paciente/salvar', data={
+            'nome': 'Novo Paciente',
+            'cpf': '11122233344', # CPF duplicado
+            'data_nascimento': '02/02/1992',
+            'telefone': '11988887777',
+            'gosto_musical': '',
+            'observacoes': ''
+        }, follow_redirects=True)
+
+        assert response.status_code == 200
+        assert b'CPF j' in response.data # "CPF já cadastrado"
+
+        # Verifica que o novo paciente não foi salvo
+        pacientes = json.load(open(TEST_PACIENTES_FILE))
+        assert len(pacientes) == 1
+
         if os.path.exists(TEST_PACIENTES_FILE):
             os.remove(TEST_PACIENTES_FILE)

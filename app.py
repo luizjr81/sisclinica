@@ -80,8 +80,8 @@ def save_json_file(filename, data):
         # Move arquivo temporário para destino final
         os.replace(temp_filename, filename)
         return True
-    except Exception as e:
-        print(f"Erro ao salvar arquivo {filename}: {e}")
+    except (IOError, OSError, json.JSONDecodeError) as e:
+        print(f"Erro de I/O ou JSON ao salvar o arquivo {filename}: {e}")
         return False
 
 # Inicializar arquivos de dados
@@ -263,21 +263,25 @@ def novo_paciente():
 def salvar_paciente():
     """Salva novo paciente"""
     try:
-        # Validação e sanitização
         nome = sanitize_input(request.form.get('nome', ''))
         cpf = sanitize_input(request.form.get('cpf', ''))
         data_nascimento = sanitize_input(request.form.get('data_nascimento', ''))
         telefone = sanitize_input(request.form.get('telefone', ''))
         gosto_musical = sanitize_input(request.form.get('gosto_musical', ''))
         observacoes = sanitize_input(request.form.get('observacoes', ''))
-        
-        # Validações
+
         if not nome or len(nome) < 2:
             flash('Nome deve ter pelo menos 2 caracteres')
             return redirect(url_for('novo_paciente'))
         
         if not validate_cpf(cpf):
             flash('CPF inválido')
+            return redirect(url_for('novo_paciente'))
+
+        # Carrega pacientes e verifica duplicação de CPF antes de outras validações
+        pacientes = load_json_file(PACIENTES_FILE)
+        if any(p['cpf'] == cpf for p in pacientes):
+            flash('CPF já cadastrado')
             return redirect(url_for('novo_paciente'))
         
         if not validate_date(data_nascimento):
@@ -288,20 +292,9 @@ def salvar_paciente():
             flash('Telefone inválido')
             return redirect(url_for('novo_paciente'))
         
-        # Carregar pacientes existentes
-        pacientes = load_json_file(PACIENTES_FILE)
-        
-        # Verificar CPF duplicado
-        for paciente in pacientes:
-            if paciente['cpf'] == cpf:
-                flash('CPF já cadastrado')
-                return redirect(url_for('novo_paciente'))
-        
-        # Gerar novo ID e código de paciente
         novo_id = max([p.get('id', 0) for p in pacientes], default=0) + 1
         codigo_paciente = f"PAC-{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
 
-        # Criar novo paciente
         novo_paciente = {
             'id': novo_id,
             'codigo': codigo_paciente,

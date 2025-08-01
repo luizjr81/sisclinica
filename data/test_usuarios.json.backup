@@ -2,17 +2,17 @@
   {
     "id": 1,
     "email": "admin@admin.com",
-    "password_hash": "pbkdf2:sha256:600000$tcfVGEcii5sbeME1$856fab84bef91eed18d7bf41d550ee4864a2aa510b25466141650bb2c34b34d5",
+    "password_hash": "pbkdf2:sha256:600000$7Lt3mydjzCDeCiVp$2e6ae1377e7d253b7015917225d9823d2a8c9271abc500c3c12b7a7f7111b34c",
     "perfil": "admin",
     "ativo": true,
-    "created_at": "2025-08-01T13:41:12.020292"
+    "created_at": "2025-08-01T19:36:26.552809"
   },
   {
     "id": 2,
     "email": "user@test.com",
-    "password_hash": "pbkdf2:sha256:600000$6b10fxMQYLjzyiVy$8c6e3eeabc8d42c462597ceec490b631d649267927509f4f43ed684fc509cf1c",
+    "password_hash": "pbkdf2:sha256:600000$aK2h6WPnz8NWTyBJ$d9fe3e3d867468164dd8285d8beff6ba0fa80c00a32de3fc9de68d8766eb9eea",
     "perfil": "usuario",
     "ativo": true,
-    "created_at": "2025-08-01T13:41:12.539016"
+    "created_at": "2025-08-01T19:36:27.097078"
   }
 ]
