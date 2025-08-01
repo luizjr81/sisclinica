@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
         total = procedimentosAdicionados.reduce((sum, p) => sum + p.valor, 0);
         const desconto = parseFloat(descontoInput.value.replace(',', '.')) || 0;
         const valorFinal = total - desconto;
-        valorTotalInput.value = `R$ ${valorFinal.toFixed(2)}`;
+        valorTotalInput.value = `R$ ${valorFinal.toFixed(2).replace('.', ',')}`;
     }
 });
 </script>
