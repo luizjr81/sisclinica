@@ -33,14 +33,17 @@
                             <strong>Procedimentos:</strong>
                             <ul>
                                 {% for proc_id in atendimento.procedimentos %}
-                                    {% set procedimento = get_procedimento_by_id(proc_id) %}
+                                    {% set procedimento = get_procedimento_by_id(proc_id|int) %}
                                     {% if procedimento %}
                                         <li>{{ procedimento.nome }} - R$ {{ ("%.2f"|format(procedimento.valor|float)).replace('.', ',') }}</li>
                                     {% else %}
-                                        <li>Procedimento não encontrado</li>
+                                        <li>Procedimento com ID {{ proc_id }} não encontrado</li>
                                     {% endif %}
                                 {% endfor %}
                             </ul>
+                            {% if atendimento.atendimento %}
+                                <p><strong>Atendimento:</strong> {{ atendimento.atendimento }}</p>
+                            {% endif %}
                             <strong>Valor Total:</strong> R$ {{ ("%.2f"|format(atendimento.valor_total|float)).replace('.', ',') }}
                         </div>
                     </div>
