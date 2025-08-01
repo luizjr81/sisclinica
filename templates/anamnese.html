@@ -59,7 +59,71 @@
             <textarea id="exame_fisico" name="exame_fisico" class="form-control"></textarea>
         </div>
 
-        <button type="submit" class="btn btn-primary">Salvar Anamnese</button>
+        <div class="form-buttons">
+            <button type="button" id="edit-btn" class="btn btn-secondary">Editar</button>
+            <button type="submit" id="save-btn" class="btn btn-primary" style="display: none;">Salvar</button>
+        </div>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const pacienteSelect = document.getElementById('paciente_id');
+        const form = pacienteSelect.form;
+        const textareas = form.querySelectorAll('textarea');
+        const editBtn = document.getElementById('edit-btn');
+        const saveBtn = document.getElementById('save-btn');
+
+        function setFormState(isEditable) {
+            textareas.forEach(textarea => {
+                textarea.readOnly = !isEditable;
+            });
+            editBtn.style.display = isEditable ? 'none' : 'inline-block';
+            saveBtn.style.display = isEditable ? 'inline-block' : 'none';
+            // Disable edit button if no patient is selected
+            editBtn.disabled = !pacienteSelect.value;
+        }
+
+        function resetForm() {
+            textareas.forEach(textarea => {
+                textarea.value = '';
+            });
+            setFormState(false);
+        }
+
+        function populateForm(data) {
+            document.getElementById('queixa_principal').value = data.queixa_principal || '';
+            document.getElementById('historia_doenca').value = data.historia_doenca || '';
+            document.getElementById('antecedentes_pessoais').value = data.antecedentes_pessoais || '';
+            document.getElementById('antecedentes_familiares').value = data.antecedentes_familiares || '';
+            document.getElementById('habitos_vida').value = data.habitos_vida || '';
+            document.getElementById('exame_fisico').value = data.exame_fisico || '';
+            setFormState(false);
+        }
+
+        pacienteSelect.addEventListener('change', function() {
+            const pacienteId = this.value;
+            if (pacienteId) {
+                fetch(`/api/anamnese/${pacienteId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        populateForm(data);
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar anamnese:', error);
+                        resetForm();
+                    });
+            } else {
+                resetForm();
+            }
+        });
+
+        editBtn.addEventListener('click', function() {
+            setFormState(true);
+        });
+
+        // Initial state
+        resetForm();
+    });
+</script>
 {% endblock %}

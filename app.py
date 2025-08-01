@@ -542,6 +542,19 @@ def utility_processors():
         get_patient_by_id=get_patient_by_id
     )
 
+@app.route('/api/anamnese/<int:paciente_id>', methods=['GET'])
+@requires_auth
+def get_anamnese(paciente_id):
+    """Retorna os dados de anamnese de um paciente específico."""
+    anamneses = load_json_file(ANAMNESE_FILE)
+    anamnese_paciente = next((a for a in anamneses if a.get('paciente_id') == paciente_id), None)
+
+    if anamnese_paciente:
+        return jsonify(anamnese_paciente)
+    else:
+        # Retorna um objeto vazio se não encontrar, para o front-end lidar
+        return jsonify({})
+
 @app.route('/anamnese', methods=['GET'])
 @requires_auth
 def anamnese():
@@ -552,40 +565,49 @@ def anamnese():
 @app.route('/salvar_anamnese', methods=['POST'])
 @requires_auth
 def salvar_anamnese():
-    """Salva a anamnese"""
+    """Salva ou atualiza a anamnese de um paciente."""
     try:
-        paciente_id = int(request.form.get('paciente_id'))
-        if not paciente_id:
-            flash('Selecione um paciente.', 'danger')
+        paciente_id_str = request.form.get('paciente_id')
+        if not paciente_id_str or not paciente_id_str.isdigit():
+            flash('Selecione um paciente válido.', 'danger')
             return redirect(url_for('anamnese'))
+        paciente_id = int(paciente_id_str)
 
-        anamnese_data = {
-            'paciente_id': paciente_id,
+        anamneses = load_json_file(ANAMNESE_FILE)
+
+        # Procura por uma anamnese existente para este paciente
+        existing_anamnese = next((a for a in anamneses if a.get('paciente_id') == paciente_id), None)
+
+        form_data = {
             'queixa_principal': sanitize_input(request.form.get('queixa_principal')),
             'historia_doenca': sanitize_input(request.form.get('historia_doenca')),
             'antecedentes_pessoais': sanitize_input(request.form.get('antecedentes_pessoais')),
             'antecedentes_familiares': sanitize_input(request.form.get('antecedentes_familiares')),
             'habitos_vida': sanitize_input(request.form.get('habitos_vida')),
             'exame_fisico': sanitize_input(request.form.get('exame_fisico')),
-            'created_at': datetime.now().isoformat()
         }
 
-        anamneses = load_json_file(ANAMNESE_FILE)
-
-        # Opcional: em vez de adicionar uma nova, poderia atualizar uma existente
-        # Por simplicidade, vamos sempre adicionar uma nova.
-
-        novo_id = max([a.get('id', 0) for a in anamneses], default=0) + 1
-        anamnese_data['id'] = novo_id
-
-        anamneses.append(anamnese_data)
+        if existing_anamnese:
+            # Atualiza a anamnese existente
+            existing_anamnese.update(form_data)
+            existing_anamnese['updated_at'] = datetime.now().isoformat()
+            flash_message = 'Anamnese atualizada com sucesso!'
+        else:
+            # Cria uma nova anamnese
+            new_anamnese = form_data.copy()
+            new_anamnese['paciente_id'] = paciente_id
+            new_anamnese['id'] = max([a.get('id', 0) for a in anamneses], default=0) + 1
+            new_anamnese['created_at'] = datetime.now().isoformat()
+            anamneses.append(new_anamnese)
+            flash_message = 'Anamnese salva com sucesso!'
 
         if save_json_file(ANAMNESE_FILE, anamneses):
-            flash('Anamnese salva com sucesso!', 'success')
+            flash(flash_message, 'success')
         else:
             flash('Erro ao salvar anamnese.', 'danger')
 
-        return redirect(url_for('dashboard'))
+        # Redireciona de volta para a página de anamnese
+        return redirect(url_for('anamnese'))
 
     except (ValueError, TypeError):
         flash('ID de paciente inválido.', 'danger')
