@@ -253,6 +253,60 @@ def test_create_new_patient_successfully(client, monkeypatch):
         if os.path.exists(TEST_PACIENTES_FILE):
             os.remove(TEST_PACIENTES_FILE)
 
+def test_relatorio_page_shows_details_correctly(client, monkeypatch):
+    """
+    GIVEN a patient with an appointment
+    WHEN the report page for that patient is requested
+    THEN the procedure name and consultation details should be visible
+    """
+    with client:
+        # Log in
+        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+
+        # --- Setup test data ---
+        TEST_PACIENTES_FILE = 'data/test_pacientes.json'
+        TEST_PROCEDIMENTOS_FILE = 'data/test_procedimentos.json'
+        TEST_ATENDIMENTOS_FILE = 'data/test_atendimentos.json'
+
+        monkeypatch.setattr('app.PACIENTES_FILE', TEST_PACIENTES_FILE)
+        monkeypatch.setattr('app.PROCEDIMENTOS_FILE', TEST_PROCEDIMENTOS_FILE)
+        monkeypatch.setattr('app.ATENDIMENTOS_FILE', TEST_ATENDIMENTOS_FILE)
+
+        # Create dummy data
+        paciente = {'id': 1, 'nome': 'Paciente Relatorio', 'cpf': '99988877766'}
+        procedimento = {'id': 101, 'nome': 'Teste de Procedimento', 'valor': '123.45'}
+        atendimento = {
+            'id': 1,
+            'paciente_id': 1,
+            'data': '01/08/2025',
+            'procedimentos': ['101'], # Note: ID is a string in the data
+            'atendimento': 'Este é o detalhe do atendimento.',
+            'valor_total': 123.45
+        }
+
+        save_json_file(TEST_PACIENTES_FILE, [paciente])
+        save_json_file(TEST_PROCEDIMENTOS_FILE, [procedimento])
+        save_json_file(TEST_ATENDIMENTOS_FILE, [atendimento])
+
+        # --- Make request to the report page ---
+        response = client.get('/relatorio?paciente_id=1')
+
+        # --- Assertions ---
+        assert response.status_code == 200
+        # Check if procedure name is present
+        assert b'Teste de Procedimento' in response.data
+        # Check if consultation detail is present
+        assert b'Este \xc3\xa9 o detalhe do atendimento.' in response.data
+        # Check that the "not found" message is NOT present
+        assert b'Procedimento com ID' not in response.data
+        assert b'n_o encontrado' not in response.data
+
+
+        # --- Teardown ---
+        for f in [TEST_PACIENTES_FILE, TEST_PROCEDIMENTOS_FILE, TEST_ATENDIMENTOS_FILE]:
+            if os.path.exists(f):
+                os.remove(f)
+
 def test_create_patient_with_duplicate_cpf(client, monkeypatch):
     """
     GIVEN um paciente já existente
