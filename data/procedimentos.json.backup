@@ -7,26 +7,26 @@
   {
     "id": 9,
     "nome": "Carboxiterapia",
-    "valor": "150"
+    "valor": "80"
   },
   {
     "id": 10,
     "nome": "Drenagem Linfática",
-    "valor": "200"
+    "valor": "150"
   },
   {
     "id": 11,
     "nome": "Massagem Modeladora",
-    "valor": "100"
+    "valor": "94"
   },
   {
     "id": 12,
     "nome": "Criolipólise",
-    "valor": "30"
+    "valor": "35"
   },
   {
     "id": 14,
     "nome": "Microagulhamento",
-    "valor": "100,00"
+    "valor": "50"
   }
 ]

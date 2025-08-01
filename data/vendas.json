@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": 1,
+    "atendimento_id": 1,
+    "paciente_id": 1,
+    "pagamentos": [],
+    "valor_total": 11000.0,
+    "valor_restante": 1044600.0,
+    "status": "pendente",
+    "created_at": "2025-08-01T13:57:42.774131"
+  }
+]

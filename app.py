@@ -409,7 +409,13 @@ def novo_atendimento():
 def salvar_atendimento():
     """Salva novo atendimento"""
     try:
-        paciente_id = int(sanitize_input(request.form.get('paciente_id', 0)))
+        # CORREÇÃO: Validar paciente_id antes de converter para int
+        paciente_id_str = sanitize_input(request.form.get('paciente_id'))
+        if not paciente_id_str or not paciente_id_str.isdigit():
+            flash('Selecione um paciente válido.', 'danger')
+            return redirect(url_for('novo_atendimento'))
+        paciente_id = int(paciente_id_str)
+
         data_atendimento = sanitize_input(request.form.get('data_atendimento', ''))
         procedimentos_selecionados_str = request.form.get('procedimentos_selecionados', '[]')
         atendimento_relato = sanitize_input(request.form.get('atendimento', ''))
@@ -419,10 +425,6 @@ def salvar_atendimento():
         procedimentos_selecionados = json.loads(procedimentos_selecionados_str)
         valor_total = float(valor_total_str.replace('R$', '').replace('.', '').replace(',', '.').strip())
         desconto = float(desconto_str.replace(',', '.'))
-
-        if paciente_id <= 0:
-            flash('Selecione um paciente válido')
-            return redirect(url_for('novo_atendimento'))
         
         pacientes = load_json_file(PACIENTES_FILE)
         paciente_existe = any(p['id'] == paciente_id for p in pacientes)
@@ -568,7 +570,8 @@ def nova_venda():
     atendimentos = []
     selected_patient_id = None
 
-    if selected_patient_id_str:
+    # CORREÇÃO: Validar se o ID do paciente existe e é um dígito
+    if selected_patient_id_str and selected_patient_id_str.isdigit():
         try:
             selected_patient_id = int(selected_patient_id_str)
             all_atendimentos = load_json_file(ATENDIMENTOS_FILE)
@@ -587,7 +590,13 @@ def nova_venda():
 def salvar_venda():
     """Salva nova venda"""
     try:
-        atendimento_id = int(request.form.get('atendimento_id'))
+        # CORREÇÃO: Validar atendimento_id antes de converter para int
+        atendimento_id_str = request.form.get('atendimento_id')
+        if not atendimento_id_str or not atendimento_id_str.isdigit():
+            flash('Nenhum atendimento foi selecionado ou o valor é inválido.', 'danger')
+            return redirect(url_for('nova_venda'))
+        atendimento_id = int(atendimento_id_str)
+
         pagamentos_json = request.form.get('pagamentos_json', '[]')
         pagamentos = json.loads(pagamentos_json)
         valor_restante = float(request.form.get('valor_restante', '0.0').replace('R$', '').replace('.', '').replace(',', '.'))

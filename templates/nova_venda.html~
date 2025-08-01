@@ -13,7 +13,7 @@
     <form method="POST" action="{{ url_for('salvar_venda') }}">
         <div class="form-group">
             <label for="paciente_id">Paciente</label>
-            <select id="paciente_id" name="paciente_id" class="form-control" onchange="window.location.href='{{url_for('nova_venda') }}?paciente_id=' + this.value">
+            <select id="paciente_id" name="paciente_id" class="form-control" onchange="this.form.submit()">
                 <option value="">Selecione um paciente</option>
                 {% for paciente in pacientes %}
                     <option value="{{ paciente.id }}" {% if paciente.id == selected_patient_id %}selected{% endif %}>{{ paciente.nome }}</option>

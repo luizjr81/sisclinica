@@ -6,13 +6,5 @@
     "perfil": "admin",
     "ativo": true,
     "created_at": "2025-07-31T20:22:13.201896"
-  },
-  {
-    "id": 3,
-    "email": "admin@admin.com",
-    "password_hash": "pbkdf2:sha256:600000$h0IUd7eTdl4K44GW$c26059c0441c97dd25d0c344d89561c93e036fc67bb0975824a91d4ac4887c1b",
-    "perfil": "admin",
-    "ativo": true,
-    "created_at": "2025-08-01T12:53:01.129539"
   }
 ]
