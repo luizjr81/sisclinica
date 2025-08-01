@@ -2,10 +2,23 @@
   {
     "id": 1,
     "paciente_id": 1,
-    "data": "31/07/2025",
-    "hora": "18:23",
-    "observacoes": "alergia dipirona",
-    "anamnese": "",
-    "created_at": "2025-07-31T18:23:15.417484"
+    "data": "2025-07-30",
+    "procedimentos": [
+      "9"
+    ],
+    "atendimento": "",
+    "valor_total": 11000.0,
+    "created_at": "2025-07-31T23:41:32.165954"
+  },
+  {
+    "id": 2,
+    "paciente_id": 1,
+    "data": "2025-07-02",
+    "procedimentos": [
+      "12"
+    ],
+    "atendimento": "",
+    "valor_total": 3000.0,
+    "created_at": "2025-07-31T23:49:06.174389"
   }
 ]
