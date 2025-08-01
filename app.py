@@ -499,12 +499,18 @@ def anamnese():
 def nova_venda():
     """Formulário de nova venda"""
     pacientes = load_json_file(PACIENTES_FILE)
-    selected_patient_id = request.args.get('paciente_id', type=int)
+    selected_patient_id_str = request.args.get('paciente_id')
     atendimentos = []
+    selected_patient_id = None
 
-    if selected_patient_id:
-        all_atendimentos = load_json_file(ATENDIMENTOS_FILE)
-        atendimentos = [a for a in all_atendimentos if a.get('paciente_id') == selected_patient_id and a.get('status_pagamento') != 'pago']
+    if selected_patient_id_str:
+        try:
+            selected_patient_id = int(selected_patient_id_str)
+            all_atendimentos = load_json_file(ATENDIMENTOS_FILE)
+            atendimentos = [a for a in all_atendimentos if a.get('paciente_id') == selected_patient_id and a.get('status_pagamento') != 'pago']
+        except (ValueError, TypeError):
+            flash('ID de paciente inválido.')
+            selected_patient_id = None
 
     return render_template('nova_venda.html',
                            pacientes=pacientes,
