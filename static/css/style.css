@@ -1,0 +1,269 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Mobile-first: fonte mínima 16px */
+        body { font-size: 16px; }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111418;
+            flex: 1;
+            text-align: center;
+        }
+
+        .back-btn, .menu-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111418;
+        }
+
+        .content {
+            flex: 1;
+            padding: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #111418;
+            font-size: 16px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid #dbe0e6;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            color: #111418;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #0c7ff2;
+        }
+
+        .form-control.bg-gray {
+            background: #f0f2f5;
+            border: none;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            min-width: 84px;
+        }
+
+        .btn-primary {
+            background: #E6A4B4;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #111418;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            margin-top: auto;
+            padding: 16px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .stats-card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .stats-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111418;
+            margin-bottom: 8px;
+        }
+
+        .stats-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0c7ff2;
+        }
+
+        .nav-bottom {
+            background: white;
+            border-top: 1px solid #f0f2f5;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #60758a;
+            font-size: 12px;
+            padding: 8px;
+        }
+
+        .nav-item.active {
+            color: #111418;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .radio-item {
+            position: relative;
+        }
+
+        .radio-item input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .radio-item label {
+            display: block;
+            padding: 12px 16px;
+            border: 1px solid #dbe0e6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .radio-item input[type="radio"]:checked + label {
+            border: 3px solid #0c7ff2;
+            padding: 10px 14px;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .list-item-content {
+            flex: 1;
+        }
+
+        .list-item-title {
+            font-weight: 500;
+            color: #111418;
+            margin-bottom: 4px;
+        }
+
+        .list-item-subtitle {
+            font-size: 14px;
+            color: #60758a;
+        }
+
+        .select-arrow {
+            width: 24px;
+            height: 24px;
+            color: #111418;
+        }
+
+        @media (min-width: 480px) {
+            body { font-size: 16px; }
+            .container { max-width: 600px; }
+        }
