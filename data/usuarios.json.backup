@@ -1,27 +1,26 @@
 [
   {
-<<<<<<< HEAD
     "id": 2,
     "email": "elielma@oi.com",
-    "password_hash": "pbkdf2:sha256:600000$zUFGzk4JbJlJYnhR$b928bfe036b57efdfa0f3d59d282b83226def4a334b586608000ece3723f91c0",
-=======
-    "id": 1,
-    "email": "admin@admin.com",
-    "password_hash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
-    "created_at": "2025-07-31T18:21:16.147309",
-    "ativo": true
-  },
-  {
-    "id": 2,
-    "email": "elielma@oi.com",
-    "password_hash": "500cb6e4c18757486135760e4cd5a5c439526926a2c0c821af309903733d12b0",
->>>>>>> 939e5f80067548d0d04f7db10966323369b1a7aa
+    "password_hash": "pbkdf2:sha256:600000$FRbCIGEFqn0nTlZU$be5d754ba6fc67cce95106ee730e238f3b5cab95a933c78334738a08622f2cd1",
     "perfil": "admin",
     "ativo": true,
     "created_at": "2025-07-31T20:22:13.201896"
+  },
+  {
+    "id": 3,
+    "email": "admin@ens.online",
+    "password_hash": "pbkdf2:sha256:600000$jKs5S22gd8iSA3Hs$7fa18ffda51ce70f8fb206fe5a9da6a708832b49f2d9eaf3df4e4970b58ee902",
+    "perfil": "admin",
+    "ativo": true,
+    "created_at": "2025-08-01T19:24:12.981347"
+  },
+  {
+    "id": 4,
+    "email": "admin@clinicaen.online",
+    "password_hash": "pbkdf2:sha256:600000$ER89rwg9cLDDF6RP$acdc4d79f99cdac6c41cc497d803748e4bdc0e119049e9710957a4d58c5ca689",
+    "perfil": "admin",
+    "ativo": true,
+    "created_at": "2025-08-01T19:26:10.035582"
   }
-<<<<<<< HEAD
 ]
-=======
-]
->>>>>>> 939e5f80067548d0d04f7db10966323369b1a7aa
