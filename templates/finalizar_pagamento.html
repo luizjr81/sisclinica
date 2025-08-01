@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header">
+    <button class="back-btn" onclick="window.location.href='{{ url_for('pagamentos_pendentes') }}'">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+    </button>
+    <h1>Finalizar Pagamento #{{ venda.id }}</h1>
+</div>
+
+<div class="content">
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Detalhes da Venda</h5>
+            <p><strong>Paciente:</strong> {{ get_patient_by_id(venda.paciente_id).nome }}</p>
+            <p><strong>Valor Total:</strong> R$ {{ "%.2f"|format(venda.valor_total|float) }}</p>
+            <p><strong>Valor Restante:</strong> <span id="valor-restante-inicial">R$ {{ "%.2f"|format(venda.valor_restante|float) }}</span></p>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Pagamentos Efetuados</h5>
+            {% if venda.pagamentos %}
+                <ul class="list-group list-group-flush">
+                {% for pagamento in venda.pagamentos %}
+                    <li class="list-group-item">{{ pagamento.forma }}: R$ {{ "%.2f"|format(pagamento.valor|float) }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>Nenhum pagamento efetuado.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('finalizar_pagamento', id=venda.id) }}">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Adicionar Novo Pagamento</h5>
+
+                <div id="pagamentos_adicionados" class="mb-3"></div>
+
+                <div class="form-group">
+                    <label for="forma_pagamento">Forma de Pagamento</label>
+                    <select id="forma_pagamento" class="form-control">
+                        <option value="pix">Pix</option>
+                        <option value="debito">Débito</option>
+                        <option value="credito">Crédito</option>
+                        <option value="especie">Espécie</option>
+                        <option value="transferencia">Transferência</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="valor_pago">Valor a Pagar</label>
+                    <input type="text" id="valor_pago" class="form-control" placeholder="0.00">
+                </div>
+
+                <button type="button" id="add_pagamento" class="btn btn-secondary btn-block mb-3">Adicionar Pagamento</button>
+
+                <input type="hidden" name="pagamentos_json" id="pagamentos_json">
+
+                <div class="summary mt-3">
+                    <p><strong>Total de Novos Pagamentos:</strong> <span id="total_novos_pagamentos">R$ 0.00</span></p>
+                    <p><strong>Novo Valor Restante:</strong> <span id="novo_valor_restante">R$ {{ "%.2f"|format(venda.valor_restante|float) }}</span></p>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Salvar Novos Pagamentos</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const valorRestanteInicial = parseFloat({{ venda.valor_restante }});
+    const addPagamentoBtn = document.getElementById('add_pagamento');
+    const pagamentosAdicionadosDiv = document.getElementById('pagamentos_adicionados');
+    const totalNovosPagamentosSpan = document.getElementById('total_novos_pagamentos');
+    const novoValorRestanteSpan = document.getElementById('novo_valor_restante');
+    const pagamentosJsonInput = document.getElementById('pagamentos_json');
+
+    let novosPagamentos = [];
+
+    addPagamentoBtn.addEventListener('click', function() {
+        const formaPagamento = document.getElementById('forma_pagamento').value;
+        const valorPagoInput = document.getElementById('valor_pago');
+        const valorPago = parseFloat(valorPagoInput.value.replace(',', '.'));
+
+        if (isNaN(valorPago) || valorPago <= 0) {
+            alert('Insira um valor de pagamento válido.');
+            return;
+        }
+
+        novosPagamentos.push({ forma: formaPagamento, valor: valorPago });
+        valorPagoInput.value = '';
+        renderNovosPagamentos();
+        updateSummary();
+    });
+
+    function renderNovosPagamentos() {
+        pagamentosAdicionadosDiv.innerHTML = '<h6>Novos Pagamentos</h6>';
+        if (novosPagamentos.length === 0) {
+            pagamentosAdicionadosDiv.innerHTML = '';
+            return;
+        }
+        const list = document.createElement('ul');
+        list.className = 'list-group list-group-flush';
+        novosPagamentos.forEach((p, index) => {
+            const listItem = document.createElement('li');
+            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            listItem.innerText = `${p.forma}: R$ ${p.valor.toFixed(2)}`;
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-danger btn-sm';
+            removeBtn.innerText = 'X';
+            removeBtn.dataset.index = index;
+            removeBtn.addEventListener('click', function() {
+                novosPagamentos.splice(this.dataset.index, 1);
+                renderNovosPagamentos();
+                updateSummary();
+            });
+
+            listItem.appendChild(removeBtn);
+            list.appendChild(listItem);
+        });
+        pagamentosAdicionadosDiv.appendChild(list);
+    }
+
+    function updateSummary() {
+        const totalPago = novosPagamentos.reduce((acc, p) => acc + p.valor, 0);
+        const novoValorRestante = valorRestanteInicial - totalPago;
+
+        totalNovosPagamentosSpan.innerText = `R$ ${totalPago.toFixed(2)}`;
+        novoValorRestanteSpan.innerText = `R$ ${novoValorRestante.toFixed(2)}`;
+        pagamentosJsonInput.value = JSON.stringify(novosPagamentos);
+    }
+});
+</script>
+{% endblock %}

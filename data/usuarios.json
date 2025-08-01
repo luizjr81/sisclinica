@@ -1,8 +1,21 @@
 [
   {
+<<<<<<< HEAD
     "id": 2,
     "email": "elielma@oi.com",
     "password_hash": "pbkdf2:sha256:600000$zUFGzk4JbJlJYnhR$b928bfe036b57efdfa0f3d59d282b83226def4a334b586608000ece3723f91c0",
+=======
+    "id": 1,
+    "email": "admin@admin.com",
+    "password_hash": "pbkdf2:sha256:600000$MaJOnMqNMsj4Itu7$1074105452d7972edbccb826a550a566c7316ad194f861a69168933767e9abef",
+    "created_at": "2025-07-31T18:21:16.147309",
+    "ativo": true
+  },
+  {
+    "id": 2,
+    "email": "elielma@oi.com",
+    "password_hash": "pbkdf2:sha256:600000$bLlyo1lR0Yt39Ou9$df41a825e3339a8d0f9d0baf5e5006ad2dbeb5c7f31e4e789eebaccf6f6cfa62",
+>>>>>>> 939e5f80067548d0d04f7db10966323369b1a7aa
     "perfil": "admin",
     "ativo": true,
     "created_at": "2025-07-31T20:22:13.201896"

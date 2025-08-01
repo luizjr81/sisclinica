@@ -17,6 +17,7 @@ ATENDIMENTOS_FILE = os.path.join(DATA_DIR, 'atendimentos.json')
 PROCEDIMENTOS_FILE = os.path.join(DATA_DIR, 'procedimentos.json')
 VENDAS_FILE = os.path.join(DATA_DIR, 'vendas.json')
 USUARIOS_FILE = os.path.join(DATA_DIR, 'usuarios.json')
+ANAMNESE_FILE = os.path.join(DATA_DIR, 'anamnese.json')
 
 # Criar diretório de dados se não existir
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -123,7 +124,7 @@ def init_data_files():
         migrate_passwords()
 
     # Inicializar outros arquivos vazios
-    for filename in [PACIENTES_FILE, ATENDIMENTOS_FILE, VENDAS_FILE]:
+    for filename in [PACIENTES_FILE, ATENDIMENTOS_FILE, VENDAS_FILE, ANAMNESE_FILE]:
         if not os.path.exists(filename):
             save_json_file(filename, [])
 
@@ -548,18 +549,57 @@ def utility_processors():
         get_patient_by_id=get_patient_by_id
     )
 
-@app.route('/anamnese', methods=['GET', 'POST'])
+@app.route('/anamnese', methods=['GET'])
 @requires_auth
 def anamnese():
     """Página de anamnese"""
-    if request.method == 'POST':
-        paciente_id = request.form.get('paciente_id')
-        # Lógica para salvar os dados da anamnese
-        flash('Anamnese salva com sucesso!', 'success')
-        return redirect(url_for('dashboard'))
-
     pacientes = load_json_file(PACIENTES_FILE)
     return render_template('anamnese.html', pacientes=pacientes)
+
+@app.route('/salvar_anamnese', methods=['POST'])
+@requires_auth
+def salvar_anamnese():
+    """Salva a anamnese"""
+    try:
+        paciente_id = int(request.form.get('paciente_id'))
+        if not paciente_id:
+            flash('Selecione um paciente.', 'danger')
+            return redirect(url_for('anamnese'))
+
+        anamnese_data = {
+            'paciente_id': paciente_id,
+            'queixa_principal': sanitize_input(request.form.get('queixa_principal')),
+            'historia_doenca': sanitize_input(request.form.get('historia_doenca')),
+            'antecedentes_pessoais': sanitize_input(request.form.get('antecedentes_pessoais')),
+            'antecedentes_familiares': sanitize_input(request.form.get('antecedentes_familiares')),
+            'habitos_vida': sanitize_input(request.form.get('habitos_vida')),
+            'exame_fisico': sanitize_input(request.form.get('exame_fisico')),
+            'created_at': datetime.now().isoformat()
+        }
+
+        anamneses = load_json_file(ANAMNESE_FILE)
+
+        # Opcional: em vez de adicionar uma nova, poderia atualizar uma existente
+        # Por simplicidade, vamos sempre adicionar uma nova.
+
+        novo_id = max([a.get('id', 0) for a in anamneses], default=0) + 1
+        anamnese_data['id'] = novo_id
+
+        anamneses.append(anamnese_data)
+
+        if save_json_file(ANAMNESE_FILE, anamneses):
+            flash('Anamnese salva com sucesso!', 'success')
+        else:
+            flash('Erro ao salvar anamnese.', 'danger')
+
+        return redirect(url_for('dashboard'))
+
+    except (ValueError, TypeError):
+        flash('ID de paciente inválido.', 'danger')
+        return redirect(url_for('anamnese'))
+    except Exception as e:
+        flash(f'Erro interno do servidor: {e}', 'danger')
+        return redirect(url_for('anamnese'))
 
 @app.route('/venda/nova', methods=['GET', 'POST'])
 @requires_auth
