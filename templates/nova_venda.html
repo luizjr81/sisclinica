@@ -82,67 +82,71 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const atendimentoSelect = document.getElementById('atendimento_id');
-    const paymentDetails = document.getElementById('payment-details');
-    const valorAtendimentoInput = document.getElementById('valor_atendimento');
-    const addPagamentoBtn = document.getElementById('add_pagamento');
-    const pagamentosAdicionadosDiv = document.getElementById('pagamentos_adicionados');
-    const totalPagoInput = document.getElementById('total_pago');
-    const valorRestanteInput = document.getElementById('valor_restante');
-    const pagamentosJsonInput = document.getElementById('pagamentos_json');
 
-    let valorTotalAtendimento = 0;
-    let pagamentos = [];
+    // Só executa o script se o seletor de atendimento existir
+    if (atendimentoSelect) {
+        const paymentDetails = document.getElementById('payment-details');
+        const valorAtendimentoInput = document.getElementById('valor_atendimento');
+        const addPagamentoBtn = document.getElementById('add_pagamento');
+        const pagamentosAdicionadosDiv = document.getElementById('pagamentos_adicionados');
+        const totalPagoInput = document.getElementById('total_pago');
+        const valorRestanteInput = document.getElementById('valor_restante');
+        const pagamentosJsonInput = document.getElementById('pagamentos_json');
 
-    atendimentoSelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        if (!selectedOption.value) {
-            paymentDetails.style.display = 'none';
-            return;
-        }
+        let valorTotalAtendimento = 0;
+        let pagamentos = [];
 
-        valorTotalAtendimento = parseFloat(selectedOption.getAttribute('data-valor'));
-        valorAtendimentoInput.value = `R$ ${valorTotalAtendimento.toFixed(2)}`;
-        paymentDetails.style.display = 'block';
-        updateSummary();
-    });
+        atendimentoSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (!selectedOption.value) {
+                paymentDetails.style.display = 'none';
+                return;
+            }
 
-    addPagamentoBtn.addEventListener('click', function() {
-        const formaPagamento = document.getElementById('forma_pagamento').value;
-        const valorPago = parseFloat(document.getElementById('valor_pago').value);
-
-        if (isNaN(valorPago) || valorPago <= 0) {
-            alert('Insira um valor de pagamento válido.');
-            return;
-        }
-
-        pagamentos.push({ forma: formaPagamento, valor: valorPago });
-        document.getElementById('valor_pago').value = '';
-        renderPagamentos();
-        updateSummary();
-    });
-
-    function renderPagamentos() {
-        pagamentosAdicionadosDiv.innerHTML = '<h4>Pagamentos Adicionados</h4>';
-        pagamentos.forEach((p, index) => {
-            pagamentosAdicionadosDiv.innerHTML += `<p>${p.forma}: R$ ${p.valor.toFixed(2)} <button type="button" class="remove-pagamento" data-index="${index}">X</button></p>`;
+            valorTotalAtendimento = parseFloat(selectedOption.getAttribute('data-valor'));
+            valorAtendimentoInput.value = `R$ ${valorTotalAtendimento.toFixed(2)}`;
+            paymentDetails.style.display = 'block';
+            updateSummary();
         });
 
-        document.querySelectorAll('.remove-pagamento').forEach(btn => {
-            btn.addEventListener('click', function() {
-                pagamentos.splice(this.dataset.index, 1);
-                renderPagamentos();
-                updateSummary();
+        addPagamentoBtn.addEventListener('click', function() {
+            const formaPagamento = document.getElementById('forma_pagamento').value;
+            const valorPago = parseFloat(document.getElementById('valor_pago').value);
+
+            if (isNaN(valorPago) || valorPago <= 0) {
+                alert('Insira um valor de pagamento válido.');
+                return;
+            }
+
+            pagamentos.push({ forma: formaPagamento, valor: valorPago });
+            document.getElementById('valor_pago').value = '';
+            renderPagamentos();
+            updateSummary();
+        });
+
+        function renderPagamentos() {
+            pagamentosAdicionadosDiv.innerHTML = '<h4>Pagamentos Adicionados</h4>';
+            pagamentos.forEach((p, index) => {
+                pagamentosAdicionadosDiv.innerHTML += `<p>${p.forma}: R$ ${p.valor.toFixed(2)} <button type="button" class="remove-pagamento" data-index="${index}">X</button></p>`;
             });
-        });
-    }
 
-    function updateSummary() {
-        const totalPago = pagamentos.reduce((acc, p) => acc + p.valor, 0);
-        const valorRestante = valorTotalAtendimento - totalPago;
+            document.querySelectorAll('.remove-pagamento').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    pagamentos.splice(this.dataset.index, 1);
+                    renderPagamentos();
+                    updateSummary();
+                });
+            });
+        }
 
-        totalPagoInput.value = `R$ ${totalPago.toFixed(2)}`;
-        valorRestanteInput.value = `R$ ${valorRestante.toFixed(2)}`;
-        pagamentosJsonInput.value = JSON.stringify(pagamentos);
+        function updateSummary() {
+            const totalPago = pagamentos.reduce((acc, p) => acc + p.valor, 0);
+            const valorRestante = valorTotalAtendimento - totalPago;
+
+            totalPagoInput.value = `R$ ${totalPago.toFixed(2)}`;
+            valorRestanteInput.value = `R$ ${valorRestante.toFixed(2)}`;
+            pagamentosJsonInput.value = JSON.stringify(pagamentos);
+        }
     }
 });
 </script>

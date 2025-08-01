@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "email": "admin@admin.com",
+    "password_hash": "pbkdf2:sha256:600000$tcfVGEcii5sbeME1$856fab84bef91eed18d7bf41d550ee4864a2aa510b25466141650bb2c34b34d5",
+    "perfil": "admin",
+    "ativo": true,
+    "created_at": "2025-08-01T13:41:12.020292"
+  },
+  {
+    "id": 2,
+    "email": "user@test.com",
+    "password_hash": "pbkdf2:sha256:600000$6b10fxMQYLjzyiVy$8c6e3eeabc8d42c462597ceec490b631d649267927509f4f43ed684fc509cf1c",
+    "perfil": "usuario",
+    "ativo": true,
+    "created_at": "2025-08-01T13:41:12.539016"
+  }
+]

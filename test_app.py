@@ -9,14 +9,12 @@ from werkzeug.security import generate_password_hash
 
 # Fixture to provide the Flask app instance
 @pytest.fixture
-def app():
+def app(monkeypatch):
     # Setup: ensure data files are initialized for a clean test environment
-    # Use a temporary file for test users to avoid modifying the real data
     TEST_USUARIOS_FILE = 'data/test_usuarios.json'
 
-    # Store the original path and set it to the test path
-    original_usuarios_file = flask_app.config.get('USUARIOS_FILE', USUARIOS_FILE)
-    flask_app.config['USUARIOS_FILE'] = TEST_USUARIOS_FILE
+    # Use monkeypatch to temporarily change the global variable in the app module
+    monkeypatch.setattr('app.USUARIOS_FILE', TEST_USUARIOS_FILE)
 
     # Ensure the data directory exists
     os.makedirs('data', exist_ok=True)
@@ -45,10 +43,9 @@ def app():
 
     yield flask_app
 
-    # Teardown: clean up the test user file and restore the original path
+    # Teardown: clean up the test user file
     if os.path.exists(TEST_USUARIOS_FILE):
         os.remove(TEST_USUARIOS_FILE)
-    flask_app.config['USUARIOS_FILE'] = original_usuarios_file
 
 # Fixture to provide a test client for making requests
 @pytest.fixture
@@ -82,7 +79,7 @@ def test_successful_login(client):
         password='admin123'
     ), follow_redirects=True)
     assert response.status_code == 200
-    assert b'Dashboard' in response.data
+    assert b'Painel Principal' in response.data
     assert b'Login' not in response.data
 
 # Test 3: Check if an unsuccessful login attempt is handled correctly
@@ -145,7 +142,7 @@ def test_admin_can_add_new_user(client):
         assert b'newuser@example.com' in response.data
 
 # Test 7: Check patient update with invalid data
-def test_update_patient_with_invalid_cpf(client):
+def test_update_patient_with_invalid_cpf(client, monkeypatch):
     """
     GIVEN a logged-in user
     WHEN updating a patient with an invalid CPF
@@ -156,8 +153,7 @@ def test_update_patient_with_invalid_cpf(client):
 
         # Setup a dummy patient file for this test
         TEST_PACIENTES_FILE = 'data/test_pacientes.json'
-        original_pacientes_file = flask_app.config.get('PACIENTES_FILE')
-        flask_app.config['PACIENTES_FILE'] = TEST_PACIENTES_FILE
+        monkeypatch.setattr('app.PACIENTES_FILE', TEST_PACIENTES_FILE)
 
         pacientes = [{'id': 1, 'nome': 'Teste', 'cpf': '11122233344', 'data_nascimento': '01/01/2000', 'telefone': '11999998888'}]
         save_json_file(TEST_PACIENTES_FILE, pacientes)
@@ -175,5 +171,3 @@ def test_update_patient_with_invalid_cpf(client):
         # Teardown for this specific test
         if os.path.exists(TEST_PACIENTES_FILE):
             os.remove(TEST_PACIENTES_FILE)
-        if original_pacientes_file:
-            flask_app.config['PACIENTES_FILE'] = original_pacientes_file
