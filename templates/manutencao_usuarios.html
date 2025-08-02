@@ -21,8 +21,8 @@
         <form method="POST" action="{{ url_for('salvar_usuario') }}">
             <input type="hidden" name="id" value="">
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" class="form-control" required>
+                <label for="nome">Nome</label>
+                <input type="text" id="nome" name="nome" class="form-control" required>
             </div>
             <div class="form-group">
                 <label for="password">Senha (deixe em branco para não alterar)</label>
@@ -45,7 +45,7 @@
             {% for usuario in usuarios %}
             <li class="list-item">
                 <div class="list-item-content">
-                    <div class="list-item-title">{{ usuario.email }}</div>
+                    <div class="list-item-title">{{ usuario.nome }}</div>
                     <div class="list-item-subtitle">Perfil: {{ usuario.perfil }} | Status: {% if usuario.ativo %}Ativo{% else %}Inativo{% endif %}</div>
                 </div>
                 <div>

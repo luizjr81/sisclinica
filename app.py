@@ -108,7 +108,7 @@ def init_data_files():
     # Usuário padrão (senha: admin123)
     usuarios_padrao = [{
         "id": 1,
-        "email": "admin@admin.com",
+        "nome": "admin",
         "password_hash": generate_password_hash("admin123"),
         "perfil": "admin",
         "created_at": datetime.now().isoformat()
@@ -139,7 +139,7 @@ def migrate_passwords():
             # Esta é uma suposição perigosa. Não sabemos a senha original.
             # Esta migração só funcionará se a senha for conhecida ou
             # se for resetada. Para o caso do 'admin123', podemos fazer.
-            if usuario['email'] == 'admin@admin.com':
+            if usuario.get('nome') == 'admin':
                 usuario['password_hash'] = generate_password_hash("admin123")
                 updated = True
 
@@ -148,12 +148,12 @@ def migrate_passwords():
         print("Migração de senhas concluída.")
 
 # Autenticação simples
-def check_auth(email, password):
+def check_auth(nome, password):
     """Verifica credenciais do usuário e retorna o perfil"""
     usuarios = load_json_file(USUARIOS_FILE)
     
     for usuario in usuarios:
-        if usuario.get('email') == email and check_password_hash(usuario.get('password_hash', ''), password):
+        if usuario.get('nome') == nome and check_password_hash(usuario.get('password_hash', ''), password):
             # Adicionado .get('ativo', True) para garantir que usuários desativados não possam logar
             if usuario.get('ativo', True):
                 return usuario.get('perfil', 'usuario')
@@ -189,10 +189,10 @@ def login():
 @app.route('/auth', methods=['POST'])
 def auth():
     """Processa login"""
-    email = sanitize_input(request.form.get('email', ''))
+    nome = sanitize_input(request.form.get('nome', ''))
     password = sanitize_input(request.form.get('password', ''))
     
-    perfil = check_auth(email, password)
+    perfil = check_auth(nome, password)
     if perfil:
         response = redirect(url_for('dashboard'))
         response.set_cookie('logged_in', 'true', max_age=86400)  # 24 horas
@@ -762,7 +762,7 @@ def excluir_registro(tipo, id):
     password = request.form.get('password')
     admin_user = next((u for u in load_json_file(USUARIOS_FILE) if u.get('perfil') == 'admin'), None)
 
-    if not admin_user or not check_auth(admin_user['email'], password):
+    if not admin_user or not check_auth(admin_user.get('nome'), password):
         flash('Senha incorreta!', 'danger')
         return redirect(url_for('registros_sistema'))
 
@@ -800,14 +800,14 @@ def salvar_usuario():
     """Salva (adiciona/edita) um usuário"""
     usuarios = load_json_file(USUARIOS_FILE)
     user_id = request.form.get('id')
-    email = request.form.get('email')
+    nome = request.form.get('nome')
     password = request.form.get('password')
     perfil = request.form.get('perfil')
 
     if user_id:  # Edição
         for usuario in usuarios:
             if str(usuario.get('id')) == user_id:
-                usuario['email'] = email
+                usuario['nome'] = nome
                 if password:
                     usuario['password_hash'] = generate_password_hash(password)
                 usuario['perfil'] = perfil
@@ -820,7 +820,7 @@ def salvar_usuario():
         new_id = max([u.get('id', 0) for u in usuarios], default=0) + 1
         new_user = {
             'id': new_id,
-            'email': email,
+            'nome': nome,
             'password_hash': generate_password_hash(password),
             'perfil': perfil,
             'ativo': True,
