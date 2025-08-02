@@ -1,18 +1,18 @@
 [
   {
     "id": 1,
-    "email": "admin@admin.com",
-    "password_hash": "pbkdf2:sha256:600000$rTUGIJDEP9pWnd5Q$98d6eb2a68f7da3a9abfdd6f10b9b87956b5f8c470532f9754fe1348d9217c58",
+    "nome": "admin",
+    "password_hash": "pbkdf2:sha256:600000$ZMAQCru8imalYFDW$22f8a071f3f740dcde9bc1380b8131bf70175db5ed997a42fc8283f33d7a0e1a",
     "perfil": "admin",
     "ativo": true,
-    "created_at": "2025-08-01T23:55:37.786434"
+    "created_at": "2025-08-02T00:07:56.181449"
   },
   {
     "id": 2,
-    "email": "user@test.com",
-    "password_hash": "pbkdf2:sha256:600000$j5YHysuGhCW9HZtk$f16a54551df365b97bf0d917b29e805c27e1ab8fc81308750325308817ff7c77",
+    "nome": "user",
+    "password_hash": "pbkdf2:sha256:600000$DbM35god9vgvVcnd$22cc4d90e4f39dfdf34b91781fad32599bcf341605a32f4f19bff8edb41e60e7",
     "perfil": "usuario",
     "ativo": true,
-    "created_at": "2025-08-01T23:55:38.284832"
+    "created_at": "2025-08-02T00:07:56.681907"
   }
 ]

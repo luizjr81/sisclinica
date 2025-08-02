@@ -1,18 +1,18 @@
 [
   {
     "id": 2,
-    "email": "elielma@oi.com",
     "password_hash": "pbkdf2:sha256:600000$FRbCIGEFqn0nTlZU$be5d754ba6fc67cce95106ee730e238f3b5cab95a933c78334738a08622f2cd1",
     "perfil": "admin",
     "ativo": true,
-    "created_at": "2025-07-31T20:22:13.201896"
+    "created_at": "2025-07-31T20:22:13.201896",
+    "nome": "elielma"
   },
   {
     "id": 4,
-    "email": "admin@clinicaen.online",
     "password_hash": "pbkdf2:sha256:600000$ER89rwg9cLDDF6RP$acdc4d79f99cdac6c41cc497d803748e4bdc0e119049e9710957a4d58c5ca689",
     "perfil": "admin",
     "ativo": true,
-    "created_at": "2025-08-01T19:26:10.035582"
+    "created_at": "2025-08-01T19:26:10.035582",
+    "nome": "admin"
   }
 ]

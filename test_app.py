@@ -30,7 +30,7 @@ def app(monkeypatch):
     # Create a default admin user for testing with the new hash
     admin_user = {
         "id": 1,
-        "email": "admin@admin.com",
+        "nome": "admin",
         "password_hash": generate_password_hash("admin123"),
         "perfil": "admin",
         "ativo": True,
@@ -40,7 +40,7 @@ def app(monkeypatch):
     # Create a non-admin user for testing permissions
     regular_user = {
         "id": 2,
-        "email": "user@test.com",
+        "nome": "user",
         "password_hash": generate_password_hash("password123"),
         "perfil": "usuario",
         "ativo": True,
@@ -83,7 +83,7 @@ def test_successful_login(client):
     THEN check that the user is redirected to the dashboard
     """
     response = client.post('/auth', data=dict(
-        email='admin@admin.com',
+        nome='admin',
         password='admin123'
     ), follow_redirects=True)
     assert response.status_code == 200
@@ -98,7 +98,7 @@ def test_unsuccessful_login(client):
     THEN check that the user is redirected back to the login page with an error message
     """
     response = client.post('/auth', data=dict(
-        email='wrong@user.com',
+        nome='wronguser',
         password='wrongpassword'
     ), follow_redirects=True)
     assert response.status_code == 200
@@ -112,7 +112,7 @@ def test_admin_can_access_user_maintenance(client):
     THEN check that the page loads correctly
     """
     with client:
-        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'admin', 'password': 'admin123'}, follow_redirects=True)
         response = client.get('/manutencao/usuarios')
         assert response.status_code == 200
         assert b'Manuten' in response.data
@@ -125,7 +125,7 @@ def test_non_admin_denied_user_maintenance(client):
     THEN check that the user is redirected to the dashboard with an error
     """
     with client:
-        client.post('/auth', data={'email': 'user@test.com', 'password': 'password123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'user', 'password': 'password123'}, follow_redirects=True)
         response = client.get('/manutencao/usuarios', follow_redirects=True)
         assert response.status_code == 200
         assert b'Acesso n' in response.data  # "Acesso não autorizado"
@@ -139,15 +139,15 @@ def test_admin_can_add_new_user(client):
     THEN check that the new user appears in the list
     """
     with client:
-        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'admin', 'password': 'admin123'}, follow_redirects=True)
         response = client.post('/manutencao/usuarios/salvar', data={
-            'email': 'newuser@example.com',
+            'nome': 'newuser',
             'password': 'newpassword',
             'perfil': 'usuario'
         }, follow_redirects=True)
         assert response.status_code == 200
         assert b'Usu' in response.data
-        assert b'newuser@example.com' in response.data
+        assert b'newuser' in response.data
 
 # Test 7: Check patient update with invalid data
 def test_update_patient_with_invalid_cpf(client, monkeypatch):
@@ -157,7 +157,7 @@ def test_update_patient_with_invalid_cpf(client, monkeypatch):
     THEN check for an error message
     """
     with client:
-        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'admin', 'password': 'admin123'}, follow_redirects=True)
 
         # Setup a dummy patient file for this test
         TEST_PACIENTES_FILE = 'data/test_pacientes.json'
@@ -225,7 +225,7 @@ def test_create_new_patient_successfully(client, monkeypatch):
     THEN o paciente deve ser salvo e o usuário redirecionado
     """
     with client:
-        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'admin', 'password': 'admin123'}, follow_redirects=True)
 
         TEST_PACIENTES_FILE = 'data/test_pacientes.json'
         monkeypatch.setattr('app.PACIENTES_FILE', TEST_PACIENTES_FILE)
@@ -261,7 +261,7 @@ def test_relatorio_page_shows_details_correctly(client, monkeypatch):
     """
     with client:
         # Log in
-        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'admin', 'password': 'admin123'}, follow_redirects=True)
 
         # --- Setup test data ---
         TEST_PACIENTES_FILE = 'data/test_pacientes.json'
@@ -314,7 +314,7 @@ def test_create_patient_with_duplicate_cpf(client, monkeypatch):
     THEN a criação deve falhar com uma mensagem de erro
     """
     with client:
-        client.post('/auth', data={'email': 'admin@admin.com', 'password': 'admin123'}, follow_redirects=True)
+        client.post('/auth', data={'nome': 'admin', 'password': 'admin123'}, follow_redirects=True)
 
         TEST_PACIENTES_FILE = 'data/test_pacientes.json'
         monkeypatch.setattr('app.PACIENTES_FILE', TEST_PACIENTES_FILE)
