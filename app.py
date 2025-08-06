@@ -679,19 +679,65 @@ def novo_atendimento():
             profissional_id = request.form['profissional_id']
             data_atendimento = datetime.strptime(request.form['data_atendimento'], '%Y-%m-%d').date()
             descricao = request.form.get('descricao', '')
-            valor_total = float(request.form.get('valor_total', 0))
             
-            # Criar novo atendimento
+            # Listas de procedimentos e quantidades
+            procedimento_ids = request.form.getlist('procedimentos[]')
+            quantidades = request.form.getlist('quantidades[]')
+
+            if not procedimento_ids:
+                flash('É necessário adicionar pelo menos um procedimento!', 'error')
+                pacientes = Paciente.query.order_by(Paciente.nome).all()
+                profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
+                procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
+                return render_template('atendimentos/form.html',
+                                     pacientes=pacientes,
+                                     profissionais=profissionais,
+                                     procedimentos=procedimentos,
+                                     dados=request.form)
+
+            valor_total_calculado = 0
+            procedimentos_do_atendimento = []
+
+            for i, proc_id in enumerate(procedimento_ids):
+                procedimento = Procedimento.query.get(proc_id)
+                if not procedimento:
+                    raise Exception(f"Procedimento com ID {proc_id} não encontrado.")
+
+                quantidade = int(quantidades[i]) if i < len(quantidades) else 1
+                valor_item = procedimento.valor * quantidade
+                valor_total_calculado += valor_item
+
+                procedimentos_do_atendimento.append({
+                    "procedimento_id": proc_id,
+                    "quantidade": quantidade,
+                    "valor_unitario": procedimento.valor,
+                    "valor_total": valor_item
+                })
+
+            # Criar novo atendimento com o valor calculado
             atendimento = Atendimento(
                 paciente_id=paciente_id,
                 profissional_id=profissional_id,
                 data_atendimento=data_atendimento,
                 descricao=descricao,
-                valor_total=valor_total,
+                valor_total=valor_total_calculado,
                 status='pendente'
             )
             
             db.session.add(atendimento)
+            db.session.flush()
+
+            # Criar os registros em AtendimentoProcedimento
+            for item in procedimentos_do_atendimento:
+                ap = AtendimentoProcedimento(
+                    atendimento_id=atendimento.id,
+                    procedimento_id=item['procedimento_id'],
+                    quantidade=item['quantidade'],
+                    valor_unitario=item['valor_unitario'],
+                    valor_total=item['valor_total']
+                )
+                db.session.add(ap)
+
             db.session.commit()
             
             flash('Atendimento registrado com sucesso!', 'success')
@@ -700,7 +746,16 @@ def novo_atendimento():
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao registrar atendimento: {str(e)}', 'error')
-    
+            # Re-render form on error
+            pacientes = Paciente.query.order_by(Paciente.nome).all()
+            profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
+            procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
+            return render_template('atendimentos/form.html',
+                                 pacientes=pacientes,
+                                 profissionais=profissionais,
+                                 procedimentos=procedimentos,
+                                 dados=request.form)
+
     # GET - Exibir formulário
     pacientes = Paciente.query.order_by(Paciente.nome).all()
     profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
@@ -922,38 +977,11 @@ def pagamentos():
 @app.route('/pagamentos/novo/<int:atendimento_id>')
 @login_required
 def novo_pagamento(atendimento_id):
-    try:
-        # Buscar atendimento
-        atendimento_data = db.session.query(
-            Atendimento,
-            Paciente.nome.label('paciente_nome'),
-            Paciente.cpf.label('paciente_cpf'),
-            Profissional.nome.label('profissional_nome')
-        ).join(Paciente, Atendimento.paciente_id == Paciente.id)\
-         .join(Profissional, Atendimento.profissional_id == Profissional.id)\
-         .filter(Atendimento.id == atendimento_id).first()
-        
-        if not atendimento_data:
-            flash('Atendimento não encontrado!', 'error')
-            return redirect(url_for('atendimentos'))
-        
-        # Calcular valores pagos
-        try:
-            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
-            valor_pago = sum(float(p.valor) for p in pagamentos_existentes)
-        except:
-            valor_pago = 0
-            
-        valor_pendente = float(atendimento_data.Atendimento.valor_total) - valor_pago
-        
-        return render_template('pagamentos/form.html', 
-                             atendimento=atendimento_data,
-                             valor_pago=valor_pago,
-                             valor_pendente=valor_pendente)
-        
-    except Exception as e:
-        flash(f'Funcionalidade de pagamentos em desenvolvimento: {str(e)}', 'info')
-        return redirect(url_for('atendimentos'))
+    # Funcionalidade em desenvolvimento
+    flash('A funcionalidade de registrar novos pagamentos ainda está em desenvolvimento.', 'info')
+
+    # Redireciona para a página de detalhes do atendimento para manter o contexto do usuário
+    return redirect(url_for('ver_atendimento', id=atendimento_id))
 
 # ==================== MÓDULO DE RELATÓRIOS ====================
 
@@ -1035,7 +1063,7 @@ if __name__ == '__main__':
         print("👤 Login: admin | Senha: admin123")
         print("🧪 Teste: http://localhost:5000/test")
         print("")
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true', host='0.0.0.0', port=5000)
     else:
         print("❌ Não foi possível iniciar o servidor")
         print("🔧 Execute os comandos de configuração do PostgreSQL novamente")
