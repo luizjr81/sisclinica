@@ -74,29 +74,50 @@
                                        value="{{ date.today() }}" required>
                             </div>
 
-                            <!-- Campo de busca rápida -->
+                            <!-- Valor Total -->
                             <div class="col-md-6 mb-4">
-                                <label class="form-label">
-                                    <i class="fas fa-search me-1"></i>Busca Rápida de Procedimentos
+                                <label for="valor_total" class="form-label">
+                                    <i class="fas fa-dollar-sign me-1"></i>Valor Total *
                                 </label>
-                                <input type="text" class="form-control" id="busca-procedimento" 
-                                       placeholder="Digite para buscar procedimentos...">
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="number" class="form-control" id="valor_total" name="valor_total" 
+                                           step="0.01" min="0" required placeholder="0,00">
+                                </div>
                             </div>
                         </div>
 
                         <!-- Seleção de Procedimentos -->
                         <div class="mb-4">
                             <label class="form-label">
-                                <i class="fas fa-list me-1"></i>Procedimentos Realizados *
+                                <i class="fas fa-list me-1"></i>Procedimentos Realizados
                             </label>
                             <div class="card">
                                 <div class="card-body">
-                                    <div id="procedimentos-container">
-                                        <!-- Procedimentos serão adicionados aqui via JavaScript -->
+                                    <div class="row">
+                                        {% for procedimento in procedimentos %}
+                                        <div class="col-md-4 mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input procedimento-check" type="checkbox" 
+                                                       value="{{ procedimento.valor }}" id="proc_{{ procedimento.id }}"
+                                                       data-nome="{{ procedimento.nome }}">
+                                                <label class="form-check-label" for="proc_{{ procedimento.id }}">
+                                                    {{ procedimento.nome }}
+                                                    <span class="text-success fw-bold">R$ {{ "%.2f"|format(procedimento.valor) }}</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary" id="adicionar-procedimento">
-                                        <i class="fas fa-plus me-2"></i>Adicionar Procedimento
-                                    </button>
+                                    
+                                    {% if not procedimentos %}
+                                    <div class="text-center text-muted">
+                                        <p>Nenhum procedimento cadastrado.</p>
+                                        <a href="{{ url_for('cadastrar_procedimento') }}" target="_blank" class="btn btn-outline-primary">
+                                            <i class="fas fa-plus me-2"></i>Cadastrar Procedimento
+                                        </a>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -110,15 +131,140 @@
                                       placeholder="Descreva o atendimento realizado, observações importantes..."></textarea>
                         </div>
 
-                        <!-- Desconto -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label">
-                                    <i class="fas fa-percentage me-1"></i>Tipo de Desconto
-                                </label>
-                                <select class="form-control" id="desconto_tipo" name="desconto_tipo">
-                                    <option value="valor">Valor (R$)</option>
-                                    <option value="percentual">Percentual (%)</option>
-                                </select>
+                        <!-- Resumo Financeiro -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-calculator me-2"></i>Resumo Financeiro
+                                </h6>
+                                <div class="row text-center">
+                                    <div class="col-md-4">
+                                        <div class="h5 text-primary" id="valor-procedimentos">R$ 0,00</div>
+                                        <small class="text-muted">Valor Procedimentos</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="h5 text-warning" id="valor-desconto">R$ 0,00</div>
+                                        <small class="text-muted">Desconto</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="h4 text-success" id="valor-final">R$ 0,00</div>
+                                        <small class="text-muted">Valor Final</small>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{{ url_for('atendimentos') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-save me-2"></i>Registrar Atendimento
+                                </button>
+                                <button type="submit" name="criar_e_pagar" value="1" class="btn btn-success btn-lg">
+                                    <i class="fas fa-credit-card me-2"></i>Registrar e Ir para Pagamento
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-check-label {
+        cursor: pointer;
+        width: 100%;
+        display: block;
+    }
+    
+    .procedimento-check:checked + .form-check-label {
+        background-color: rgba(139, 92, 246, 0.1);
+        border-radius: 4px;
+        padding: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const pacienteSelect = document.getElementById('paciente_id');
+        const observacoesDiv = document.getElementById('paciente-observacoes');
+        const observacoesText = document.getElementById('observacoes-text');
+        const valorTotalInput = document.getElementById('valor_total');
+        const procedimentoChecks = document.querySelectorAll('.procedimento-check');
+
+        // Mostrar observações do paciente selecionado
+        pacienteSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const observacoes = selectedOption.getAttribute('data-observacoes');
+            
+            if (observacoes && observacoes.trim()) {
+                observacoesText.textContent = observacoes;
+                observacoesDiv.style.display = 'block';
+            } else {
+                observacoesDiv.style.display = 'none';
+            }
+        });
+
+        // Calcular valor total baseado nos procedimentos selecionados
+        function calcularTotal() {
+            let total = 0;
+            let procedimentosSelecionados = [];
+            
+            procedimentoChecks.forEach(function(checkbox) {
+                if (checkbox.checked) {
+                    total += parseFloat(checkbox.value);
+                    procedimentosSelecionados.push(checkbox.getAttribute('data-nome'));
+                }
+            });
+            
+            valorTotalInput.value = total.toFixed(2);
+            document.getElementById('valor-procedimentos').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            document.getElementById('valor-final').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            
+            // Atualizar descrição automaticamente
+            const descricaoTextarea = document.getElementById('descricao');
+            if (procedimentosSelecionados.length > 0 && !descricaoTextarea.value.trim()) {
+                descricaoTextarea.value = `Procedimentos realizados: ${procedimentosSelecionados.join(', ')}`;
+            }
+        }
+
+        // Adicionar listeners aos checkboxes
+        procedimentoChecks.forEach(function(checkbox) {
+            checkbox.addEventListener('change', calcularTotal);
+        });
+
+        // Validação do formulário
+        const form = document.getElementById('atendimentoForm');
+        form.addEventListener('submit', function(e) {
+            const valorTotal = parseFloat(valorTotalInput.value);
+            
+            if (valorTotal <= 0) {
+                e.preventDefault();
+                alert('O valor total deve ser maior que zero!');
+                valorTotalInput.focus();
+                return;
+            }
+
+            // Se não tem procedimentos selecionados, perguntar se quer continuar
+            const algumProcedimentoSelecionado = Array.from(procedimentoChecks).some(cb => cb.checked);
+            if (!algumProcedimentoSelecionado) {
+                if (!confirm('Nenhum procedimento foi selecionado. Deseja continuar mesmo assim?')) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+
+        // Auto-focus no primeiro campo
+        pacienteSelect.focus();
+    });
+</script>
+{% endblock %}

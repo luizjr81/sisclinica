@@ -206,15 +206,78 @@ def logout():
 def dashboard():
     hoje = date.today()
     
-    # Estatísticas para o dashboard
+    # Estatísticas básicas
     total_pacientes = Paciente.query.count()
+    total_profissionais = Profissional.query.filter_by(ativo=True).count()
+    total_procedimentos = Procedimento.query.filter_by(ativo=True).count()
+    
+    # Estatísticas de atendimentos (com tratamento de erro)
+    try:
+        total_atendimentos = Atendimento.query.count()
+        atendimentos_hoje = Atendimento.query.filter_by(data_atendimento=hoje).count()
+        
+        # Valores financeiros
+        valores_hoje = db.session.query(db.func.sum(Atendimento.valor_total))\
+                                .filter_by(data_atendimento=hoje).scalar() or 0
+        
+        # Atendimentos pendentes
+        atendimentos_pendentes = Atendimento.query.filter_by(status='pendente').count()
+        
+        # Últimos atendimentos
+        ultimos_atendimentos = db.session.query(
+            Atendimento,
+            Paciente.nome.label('paciente_nome'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Atendimento.paciente_id == Paciente.id)\
+         .join(Profissional, Atendimento.profissional_id == Profissional.id)\
+         .order_by(Atendimento.criado_em.desc()).limit(5).all()
+        
+    except Exception:
+        # Se tabelas não existem ainda
+        total_atendimentos = 0
+        atendimentos_hoje = 0
+        valores_hoje = 0
+        atendimentos_pendentes = 0
+        ultimos_atendimentos = []
+    
+    # Estatísticas de agendamentos (com tratamento de erro)
+    try:
+        agendamentos_hoje = Agendamento.query.filter(
+            db.func.date(Agendamento.data_hora) == hoje
+        ).count()
+        
+        proximos_agendamentos = db.session.query(
+            Agendamento,
+            Paciente.nome.label('paciente_nome'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Agendamento.paciente_id == Paciente.id)\
+         .join(Profissional, Agendamento.profissional_id == Profissional.id)\
+         .filter(Agendamento.data_hora >= datetime.now())\
+         .filter_by(status='agendado')\
+         .order_by(Agendamento.data_hora).limit(5).all()
+        
+    except Exception:
+        agendamentos_hoje = 0
+        proximos_agendamentos = []
     
     return render_template('dashboard.html',
+        # Estatísticas básicas
         total_pacientes=total_pacientes,
-        atendimentos_hoje=0,
-        valores_recebidos_hoje=0.0,
-        agendamentos_hoje=0,
-        ultimos_atendimentos=[]
+        total_profissionais=total_profissionais,
+        total_procedimentos=total_procedimentos,
+        
+        # Estatísticas de atendimentos
+        total_atendimentos=total_atendimentos,
+        atendimentos_hoje=atendimentos_hoje,
+        valores_recebidos_hoje=float(valores_hoje),
+        atendimentos_pendentes=atendimentos_pendentes,
+        
+        # Estatísticas de agendamentos
+        agendamentos_hoje=agendamentos_hoje,
+        
+        # Listas
+        ultimos_atendimentos=ultimos_atendimentos,
+        proximos_agendamentos=proximos_agendamentos
     )
 
 # ==================== MÓDULO DE PACIENTES ====================
@@ -679,95 +742,57 @@ def novo_atendimento():
             profissional_id = request.form['profissional_id']
             data_atendimento = datetime.strptime(request.form['data_atendimento'], '%Y-%m-%d').date()
             descricao = request.form.get('descricao', '')
+            valor_total = float(request.form.get('valor_total', 0))
             
-            # Listas de procedimentos e quantidades
-            procedimento_ids = request.form.getlist('procedimentos[]')
-            quantidades = request.form.getlist('quantidades[]')
-
-            if not procedimento_ids:
-                flash('É necessário adicionar pelo menos um procedimento!', 'error')
-                pacientes = Paciente.query.order_by(Paciente.nome).all()
-                profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
-                procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
-                return render_template('atendimentos/form.html',
-                                     pacientes=pacientes,
-                                     profissionais=profissionais,
-                                     procedimentos=procedimentos,
-                                     dados=request.form)
-
-            valor_total_calculado = 0
-            procedimentos_do_atendimento = []
-
-            for i, proc_id in enumerate(procedimento_ids):
-                procedimento = Procedimento.query.get(proc_id)
-                if not procedimento:
-                    raise Exception(f"Procedimento com ID {proc_id} não encontrado.")
-
-                quantidade = int(quantidades[i]) if i < len(quantidades) else 1
-                valor_item = procedimento.valor * quantidade
-                valor_total_calculado += valor_item
-
-                procedimentos_do_atendimento.append({
-                    "procedimento_id": proc_id,
-                    "quantidade": quantidade,
-                    "valor_unitario": procedimento.valor,
-                    "valor_total": valor_item
-                })
-
-            # Criar novo atendimento com o valor calculado
+            # Validações
+            if not paciente_id or not profissional_id:
+                flash('Paciente e Profissional são obrigatórios!', 'error')
+                raise ValueError('Campos obrigatórios não preenchidos')
+                
+            if valor_total <= 0:
+                flash('Valor total deve ser maior que zero!', 'error')
+                raise ValueError('Valor inválido')
+            
+            # Verificar se paciente e profissional existem
+            paciente = Paciente.query.get(paciente_id)
+            profissional = Profissional.query.get(profissional_id)
+            
+            if not paciente:
+                flash('Paciente não encontrado!', 'error')
+                raise ValueError('Paciente inválido')
+                
+            if not profissional or not profissional.ativo:
+                flash('Profissional não encontrado ou inativo!', 'error')
+                raise ValueError('Profissional inválido')
+            
+            # Criar novo atendimento
             atendimento = Atendimento(
                 paciente_id=paciente_id,
                 profissional_id=profissional_id,
                 data_atendimento=data_atendimento,
                 descricao=descricao,
-                valor_total=valor_total_calculado,
+                valor_total=valor_total,
                 status='pendente'
             )
             
             db.session.add(atendimento)
-            db.session.flush()
-
-            # Criar os registros em AtendimentoProcedimento
-            for item in procedimentos_do_atendimento:
-                ap = AtendimentoProcedimento(
-                    atendimento_id=atendimento.id,
-                    procedimento_id=item['procedimento_id'],
-                    quantidade=item['quantidade'],
-                    valor_unitario=item['valor_unitario'],
-                    valor_total=item['valor_total']
-                )
-                db.session.add(ap)
-
             db.session.commit()
             
-            flash('Atendimento registrado com sucesso!', 'success')
+            flash(f'Atendimento para {paciente.nome} registrado com sucesso!', 'success')
+            
+            # Se clicou em "Registrar e Ir para Pagamento"
+            if 'criar_e_pagar' in request.form:
+                return redirect(url_for('novo_pagamento', atendimento_id=atendimento.id))
+            
             return redirect(url_for('atendimentos'))
             
-        except (ValueError, TypeError) as e:
-            db.session.rollback()
-            flash(f'Erro de dados no formulário: {str(e)}', 'error')
-            # Re-render form on error
-            pacientes = Paciente.query.order_by(Paciente.nome).all()
-            profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
-            procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
-            return render_template('atendimentos/form.html',
-                                 pacientes=pacientes,
-                                 profissionais=profissionais,
-                                 procedimentos=procedimentos,
-                                 dados=request.form)
+        except ValueError as ve:
+            # Erro de validação - não faz rollback
+            pass
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro inesperado ao registrar atendimento: {str(e)}', 'error')
-            # Re-render form on error
-            pacientes = Paciente.query.order_by(Paciente.nome).all()
-            profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
-            procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
-            return render_template('atendimentos/form.html',
-                                 pacientes=pacientes,
-                                 profissionais=profissionais,
-                                 procedimentos=procedimentos,
-                                 dados=request.form)
-
+            flash(f'Erro ao registrar atendimento: {str(e)}', 'error')
+    
     # GET - Exibir formulário
     pacientes = Paciente.query.order_by(Paciente.nome).all()
     profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
@@ -986,14 +1011,112 @@ def pagamentos():
     flash('Módulo de pagamentos em desenvolvimento. Use a área de atendimentos para gerenciar pagamentos.', 'info')
     return redirect(url_for('atendimentos'))
 
-@app.route('/pagamentos/novo/<int:atendimento_id>')
+@app.route('/pagamentos/novo/<int:atendimento_id>', methods=['GET', 'POST'])
 @login_required
 def novo_pagamento(atendimento_id):
-    # Funcionalidade em desenvolvimento
-    flash('A funcionalidade de registrar novos pagamentos ainda está em desenvolvimento.', 'info')
-
-    # Redireciona para a página de detalhes do atendimento para manter o contexto do usuário
-    return redirect(url_for('ver_atendimento', id=atendimento_id))
+    if request.method == 'POST':
+        try:
+            valor = float(request.form['valor'])
+            forma_pagamento = request.form['forma_pagamento']
+            data_pagamento = datetime.strptime(request.form['data_pagamento'], '%Y-%m-%d').date()
+            observacoes = request.form.get('observacoes', '')
+            
+            # Buscar atendimento
+            atendimento = Atendimento.query.get_or_404(atendimento_id)
+            
+            # Calcular valores já pagos
+            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
+            valor_ja_pago = sum(float(p.valor) for p in pagamentos_existentes)
+            valor_pendente = float(atendimento.valor_total) - valor_ja_pago
+            
+            # Validações
+            if valor <= 0:
+                flash('O valor deve ser maior que zero!', 'error')
+                raise ValueError('Valor inválido')
+                
+            if valor > valor_pendente:
+                flash(f'O valor não pode ser maior que o pendente (R$ {valor_pendente:.2f})', 'error')
+                raise ValueError('Valor maior que pendente')
+                
+            if not forma_pagamento:
+                flash('Selecione a forma de pagamento!', 'error')
+                raise ValueError('Forma de pagamento não selecionada')
+            
+            # Criar novo pagamento
+            pagamento = Pagamento(
+                atendimento_id=atendimento_id,
+                valor=valor,
+                forma_pagamento=forma_pagamento,
+                data_pagamento=data_pagamento,
+                observacoes=observacoes
+            )
+            
+            db.session.add(pagamento)
+            
+            # Atualizar status do atendimento
+            novo_valor_pago = valor_ja_pago + valor
+            if novo_valor_pago >= float(atendimento.valor_total):
+                atendimento.status = 'pago'
+                status_msg = 'totalmente pago'
+            else:
+                atendimento.status = 'parcial'
+                status_msg = 'parcialmente pago'
+            
+            db.session.commit()
+            
+            # Buscar dados do paciente para a mensagem
+            paciente = Paciente.query.get(atendimento.paciente_id)
+            
+            flash(f'Pagamento de R$ {valor:.2f} registrado! Atendimento de {paciente.nome} agora está {status_msg}.', 'success')
+            
+            # Se ainda há valor pendente, perguntar se quer continuar pagando
+            if novo_valor_pago < float(atendimento.valor_total):
+                valor_restante = float(atendimento.valor_total) - novo_valor_pago
+                flash(f'Valor restante: R$ {valor_restante:.2f}', 'info')
+                return redirect(url_for('novo_pagamento', atendimento_id=atendimento_id))
+            else:
+                return redirect(url_for('ver_atendimento', id=atendimento_id))
+            
+        except ValueError:
+            # Erro de validação - não faz rollback
+            pass
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao registrar pagamento: {str(e)}', 'error')
+    
+    # GET - Exibir formulário
+    try:
+        # Buscar atendimento
+        atendimento_data = db.session.query(
+            Atendimento,
+            Paciente.nome.label('paciente_nome'),
+            Paciente.cpf.label('paciente_cpf'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Atendimento.paciente_id == Paciente.id)\
+         .join(Profissional, Atendimento.profissional_id == Profissional.id)\
+         .filter(Atendimento.id == atendimento_id).first()
+        
+        if not atendimento_data:
+            flash('Atendimento não encontrado!', 'error')
+            return redirect(url_for('atendimentos'))
+        
+        # Calcular valores pagos
+        try:
+            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
+            valor_pago = sum(float(p.valor) for p in pagamentos_existentes)
+        except:
+            valor_pago = 0
+            
+        valor_pendente = float(atendimento_data.Atendimento.valor_total) - valor_pago
+        
+        return render_template('pagamentos/form.html', 
+                             atendimento=atendimento_data,
+                             valor_pago=valor_pago,
+                             valor_pendente=max(0, valor_pendente))
+        
+    except Exception as e:
+        flash(f'Erro ao buscar dados do pagamento: {str(e)}', 'error')
+        return redirect(url_for('atendimentos'))
 
 # ==================== MÓDULO DE RELATÓRIOS ====================
 
@@ -1058,6 +1181,203 @@ def not_found_error(error):
 def internal_error(error):
     db.session.rollback()
     return render_template('errors/500.html'), 500
+    
+    
+# ==================== ROTAS EXTRAS ====================
+
+@app.route('/api/estatisticas')
+@login_required
+def api_estatisticas():
+    """API para dados do dashboard em tempo real"""
+    try:
+        hoje = date.today()
+        
+        stats = {
+            'pacientes_total': Paciente.query.count(),
+            'atendimentos_hoje': Atendimento.query.filter_by(data_atendimento=hoje).count() if 'Atendimento' in globals() else 0,
+            'agendamentos_hoje': Agendamento.query.filter(db.func.date(Agendamento.data_hora) == hoje).count() if 'Agendamento' in globals() else 0,
+            'profissionais_ativos': Profissional.query.filter_by(ativo=True).count(),
+            'procedimentos_ativos': Procedimento.query.filter_by(ativo=True).count(),
+        }
+        
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/buscar-pacientes')
+@login_required
+def buscar_pacientes():
+    """Busca rápida de pacientes para autocomplete"""
+    termo = request.args.get('termo', '')
+    
+    if len(termo) < 2:
+        return jsonify([])
+    
+    pacientes = Paciente.query.filter(
+        db.or_(
+            Paciente.nome.ilike(f'%{termo}%'),
+            Paciente.cpf.ilike(f'%{termo}%')
+        )
+    ).limit(10).all()
+    
+    resultado = []
+    for paciente in pacientes:
+        resultado.append({
+            'id': paciente.id,
+            'nome': paciente.nome,
+            'cpf': formatar_cpf(paciente.cpf),
+            'telefone': paciente.telefone or '',
+            'idade': calcular_idade(paciente.data_nascimento)
+        })
+    
+    return jsonify(resultado)
+
+@app.route('/verificar-disponibilidade')
+@login_required
+def verificar_disponibilidade():
+    """Verifica disponibilidade de horário para agendamento"""
+    try:
+        profissional_id = request.args.get('profissional_id')
+        data = request.args.get('data')
+        horario = request.args.get('horario')
+        
+        if not all([profissional_id, data, horario]):
+            return jsonify({'disponivel': True, 'mensagem': 'Dados incompletos'})
+        
+        data_hora = datetime.strptime(f"{data} {horario}", '%Y-%m-%d %H:%M')
+        
+        # Verificar se já existe agendamento neste horário
+        conflito = Agendamento.query.filter_by(
+            profissional_id=profissional_id,
+            data_hora=data_hora,
+            status='agendado'
+        ).first()
+        
+        if conflito:
+            paciente = Paciente.query.get(conflito.paciente_id)
+            return jsonify({
+                'disponivel': False,
+                'mensagem': f'Horário ocupado por {paciente.nome}'
+            })
+        else:
+            return jsonify({
+                'disponivel': True,
+                'mensagem': 'Horário disponível'
+            })
+            
+    except Exception as e:
+        return jsonify({'disponivel': True, 'mensagem': f'Erro: {str(e)}'})
+
+@app.route('/dashboard/refresh')
+@login_required
+def dashboard_refresh():
+    """Endpoint para atualizar dados do dashboard via AJAX"""
+    try:
+        hoje = date.today()
+        
+        # Calcular estatísticas
+        stats = {
+            'atendimentos_hoje': Atendimento.query.filter_by(data_atendimento=hoje).count() if 'Atendimento' in globals() else 0,
+            'agendamentos_hoje': Agendamento.query.filter(db.func.date(Agendamento.data_hora) == hoje).count() if 'Agendamento' in globals() else 0,
+            'valores_hoje': 0,
+            'pendentes': 0
+        }
+        
+        try:
+            valores_hoje = db.session.query(db.func.sum(Atendimento.valor_total)).filter_by(data_atendimento=hoje).scalar()
+            stats['valores_hoje'] = float(valores_hoje) if valores_hoje else 0
+            
+            pendentes = Atendimento.query.filter_by(status='pendente').count()
+            stats['pendentes'] = pendentes
+        except:
+            pass
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== CONTEXT PROCESSORS ====================
+
+@app.context_processor
+def inject_user():
+    """Injeta informações do usuário em todos os templates"""
+    usuario_atual = None
+    if 'user_id' in session:
+        try:
+            usuario_atual = Usuario.query.get(session['user_id'])
+        except:
+            pass
+    
+    return dict(usuario_atual=usuario_atual)
+
+@app.context_processor
+def inject_stats():
+    """Injeta estatísticas básicas em todos os templates"""
+    try:
+        stats = {
+            'total_pacientes_global': Paciente.query.count(),
+            'total_profissionais_global': Profissional.query.filter_by(ativo=True).count(),
+            'sistema_versao': '1.0.0'
+        }
+    except:
+        stats = {
+            'total_pacientes_global': 0,
+            'total_profissionais_global': 0,
+            'sistema_versao': '1.0.0'
+        }
+    
+    return dict(**stats)
+
+# ==================== FILTROS JINJA PERSONALIZADOS ====================
+
+@app.template_filter('currency')
+def currency_filter(value):
+    """Filtro para formatar valores monetários"""
+    try:
+        return f"R$ {float(value):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return "R$ 0,00"
+
+@app.template_filter('phone')
+def phone_filter(value):
+    """Filtro para formatar telefones"""
+    if not value:
+        return ''
+    
+    # Remove caracteres não numéricos
+    phone = re.sub(r'[^0-9]', '', value)
+    
+    if len(phone) == 11:
+        return f"({phone[:2]}) {phone[2:7]}-{phone[7:]}"
+    elif len(phone) == 10:
+        return f"({phone[:2]}) {phone[2:6]}-{phone[6:]}"
+    else:
+        return value
+
+@app.template_filter('titlecase')
+def titlecase_filter(value):
+    """Filtro para formatar nomes próprios"""
+    if not value:
+        return ''
+    
+    # Palavras que não devem ser capitalizadas
+    prepositions = ['de', 'da', 'do', 'dos', 'das', 'e', 'em', 'na', 'no', 'para', 'por']
+    
+    words = value.lower().split()
+    result = []
+    
+    for i, word in enumerate(words):
+        if i == 0 or word not in prepositions:
+            result.append(word.capitalize())
+        else:
+            result.append(word)
+    
+    return ' '.join(result)  
+    
+    
+  
+    
 
 if __name__ == '__main__':
     print("🏥 Iniciando Sistema Clínica Estética")
