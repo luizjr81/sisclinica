@@ -158,11 +158,15 @@
         // Validação do formulário
         const form = document.getElementById('agendamentoForm');
         form.addEventListener('submit', function(e) {
-            const data = new Date(document.getElementById('data').value);
+            // Correção para o problema de fuso horário na validação da data
+            const dataValue = document.getElementById('data').value;
+            const dataParts = dataValue.split('-');
+            const dataSelecionada = new Date(dataParts[0], dataParts[1] - 1, dataParts[2]);
+
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
-            if (data < hoje) {
+            if (dataSelecionada < hoje) {
                 e.preventDefault();
                 alert('Não é possível agendar para uma data no passado!');
                 document.getElementById('data').focus();
@@ -170,7 +174,7 @@
             }
 
             // Validar se é fim de semana (opcional)
-            if (data.getDay() === 0) { // Domingo
+            if (dataSelecionada.getDay() === 0) { // Domingo
                 if (!confirm('Agendamento para domingo. Confirma?')) {
                     e.preventDefault();
                     return;
