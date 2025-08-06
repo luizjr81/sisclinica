@@ -616,15 +616,92 @@ def atendimentos():
     search = request.args.get('search', '')
     status = request.args.get('status', '')
     
-    # Como não temos a tabela Atendimento ainda, vamos retornar uma página vazia por enquanto
+    try:
+        # Criar query básica com join para buscar dados relacionados
+        query = db.session.query(
+            Atendimento,
+            Paciente.nome.label('paciente_nome'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Atendimento.paciente_id == Paciente.id)\
+         .join(Profissional, Atendimento.profissional_id == Profissional.id)
+        
+        # Aplicar filtros se houver
+        if search:
+            query = query.filter(Paciente.nome.ilike(f'%{search}%'))
+        
+        if status:
+            query = query.filter(Atendimento.status == status)
+        
+        # Ordenar por data mais recente
+        query = query.order_by(Atendimento.data_atendimento.desc())
+        
+        # Executar query e paginar manualmente
+        total = query.count()
+        per_page = 20
+        offset = (page - 1) * per_page
+        items = query.offset(offset).limit(per_page).all()
+        
+    except Exception:
+        # Se tabelas não existem, retorna dados vazios
+        items = []
+        total = 0
+    
+    # Criar objeto de paginação manual
+    class PaginationMock:
+        def __init__(self, items, page, per_page, total):
+            self.items = items
+            self.total = total
+            self.pages = max(1, (total + per_page - 1) // per_page)
+            self.page = page
+            self.per_page = per_page
+            self.has_prev = page > 1
+            self.has_next = page < self.pages
+            self.prev_num = page - 1 if self.has_prev else None
+            self.next_num = page + 1 if self.has_next else None
+            
+        def iter_pages(self):
+            for num in range(1, self.pages + 1):
+                yield num
+    
+    atendimentos_paginados = PaginationMock(items, page, per_page, total)
+    
     return render_template('atendimentos/lista.html', 
-                         atendimentos={'items': [], 'total': 0, 'pages': 1, 'has_prev': False, 'has_next': False},
+                         atendimentos=atendimentos_paginados,
                          search=search, 
                          status=status)
 
-@app.route('/atendimentos/novo')
+@app.route('/atendimentos/novo', methods=['GET', 'POST'])
 @login_required
 def novo_atendimento():
+    if request.method == 'POST':
+        try:
+            paciente_id = request.form['paciente_id']
+            profissional_id = request.form['profissional_id']
+            data_atendimento = datetime.strptime(request.form['data_atendimento'], '%Y-%m-%d').date()
+            descricao = request.form.get('descricao', '')
+            valor_total = float(request.form.get('valor_total', 0))
+            
+            # Criar novo atendimento
+            atendimento = Atendimento(
+                paciente_id=paciente_id,
+                profissional_id=profissional_id,
+                data_atendimento=data_atendimento,
+                descricao=descricao,
+                valor_total=valor_total,
+                status='pendente'
+            )
+            
+            db.session.add(atendimento)
+            db.session.commit()
+            
+            flash('Atendimento registrado com sucesso!', 'success')
+            return redirect(url_for('atendimentos'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao registrar atendimento: {str(e)}', 'error')
+    
+    # GET - Exibir formulário
     pacientes = Paciente.query.order_by(Paciente.nome).all()
     profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
     procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
@@ -637,9 +714,26 @@ def novo_atendimento():
 @app.route('/atendimentos/<int:id>')
 @login_required
 def ver_atendimento(id):
-    # Por enquanto, redireciona para a lista
-    flash('Funcionalidade em desenvolvimento', 'info')
-    return redirect(url_for('atendimentos'))
+    try:
+        # Buscar atendimento com dados relacionados
+        atendimento_data = db.session.query(
+            Atendimento,
+            Paciente.nome.label('paciente_nome'),
+            Paciente.cpf.label('paciente_cpf'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Atendimento.paciente_id == Paciente.id)\
+         .join(Profissional, Atendimento.profissional_id == Profissional.id)\
+         .filter(Atendimento.id == id).first()
+        
+        if not atendimento_data:
+            flash('Atendimento não encontrado!', 'error')
+            return redirect(url_for('atendimentos'))
+            
+        return render_template('atendimentos/detalhes.html', atendimento=atendimento_data)
+        
+    except Exception as e:
+        flash(f'Erro ao buscar atendimento: {str(e)}', 'error')
+        return redirect(url_for('atendimentos'))
 
 # ==================== MÓDULO DE AGENDAMENTOS ====================
 
@@ -657,18 +751,62 @@ def agendamentos():
     
     hoje = date.today()
     
-    # Como não temos a tabela Agendamento ainda, retornamos uma lista vazia
-    agendamentos = []
+    # Buscar agendamentos do dia selecionado
+    try:
+        agendamentos_data = db.session.query(
+            Agendamento,
+            Paciente.nome.label('paciente_nome'),
+            Paciente.telefone.label('paciente_telefone'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Agendamento.paciente_id == Paciente.id)\
+         .join(Profissional, Agendamento.profissional_id == Profissional.id)\
+         .filter(db.func.date(Agendamento.data_hora) == data_selecionada)\
+         .order_by(Agendamento.data_hora).all()
+    except Exception:
+        # Se não conseguir fazer a query (tabelas não existem), retorna lista vazia
+        agendamentos_data = []
     
     return render_template('agendamentos/lista.html',
-                         agendamentos=agendamentos,
+                         agendamentos=agendamentos_data,
                          data_selecionada=data_selecionada,
                          hoje=hoje,
                          timedelta=timedelta)
 
-@app.route('/agendamentos/novo')
+@app.route('/agendamentos/novo', methods=['GET', 'POST'])
 @login_required
 def novo_agendamento():
+    if request.method == 'POST':
+        try:
+            paciente_id = request.form['paciente_id']
+            profissional_id = request.form['profissional_id']
+            data = request.form['data']
+            horario = request.form['horario']
+            observacoes = request.form.get('observacoes', '')
+            status = request.form.get('status', 'agendado')
+            
+            # Combinar data e horário
+            data_hora = datetime.strptime(f"{data} {horario}", '%Y-%m-%d %H:%M')
+            
+            # Criar novo agendamento
+            agendamento = Agendamento(
+                paciente_id=paciente_id,
+                profissional_id=profissional_id,
+                data_hora=data_hora,
+                observacoes=observacoes,
+                status=status
+            )
+            
+            db.session.add(agendamento)
+            db.session.commit()
+            
+            flash('Agendamento criado com sucesso!', 'success')
+            return redirect(url_for('agendamentos'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar agendamento: {str(e)}', 'error')
+    
+    # GET - Exibir formulário
     pacientes = Paciente.query.order_by(Paciente.nome).all()
     profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
     
@@ -679,8 +817,17 @@ def novo_agendamento():
 @app.route('/agendamentos/<int:id>/status', methods=['POST'])
 @login_required
 def atualizar_status_agendamento(id):
-    # Por enquanto, apenas retorna para a lista
-    flash('Funcionalidade em desenvolvimento', 'info')
+    try:
+        status = request.form['status']
+        agendamento = Agendamento.query.get_or_404(id)
+        agendamento.status = status
+        db.session.commit()
+        
+        flash(f'Status do agendamento atualizado para {status}!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar status: {str(e)}', 'error')
+    
     return redirect(url_for('agendamentos'))
 
 # ==================== MÓDULO DE PROFISSIONAIS ====================
@@ -768,14 +915,45 @@ def editar_profissional(id):
 @app.route('/pagamentos')
 @login_required
 def pagamentos():
-    # Redireciona para atendimentos por enquanto
+    # Por enquanto redireciona para atendimentos
+    flash('Módulo de pagamentos em desenvolvimento. Use a área de atendimentos para gerenciar pagamentos.', 'info')
     return redirect(url_for('atendimentos'))
 
 @app.route('/pagamentos/novo/<int:atendimento_id>')
 @login_required
 def novo_pagamento(atendimento_id):
-    flash('Módulo de pagamentos em desenvolvimento', 'info')
-    return redirect(url_for('atendimentos'))
+    try:
+        # Buscar atendimento
+        atendimento_data = db.session.query(
+            Atendimento,
+            Paciente.nome.label('paciente_nome'),
+            Paciente.cpf.label('paciente_cpf'),
+            Profissional.nome.label('profissional_nome')
+        ).join(Paciente, Atendimento.paciente_id == Paciente.id)\
+         .join(Profissional, Atendimento.profissional_id == Profissional.id)\
+         .filter(Atendimento.id == atendimento_id).first()
+        
+        if not atendimento_data:
+            flash('Atendimento não encontrado!', 'error')
+            return redirect(url_for('atendimentos'))
+        
+        # Calcular valores pagos
+        try:
+            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
+            valor_pago = sum(float(p.valor) for p in pagamentos_existentes)
+        except:
+            valor_pago = 0
+            
+        valor_pendente = float(atendimento_data.Atendimento.valor_total) - valor_pago
+        
+        return render_template('pagamentos/form.html', 
+                             atendimento=atendimento_data,
+                             valor_pago=valor_pago,
+                             valor_pendente=valor_pendente)
+        
+    except Exception as e:
+        flash(f'Funcionalidade de pagamentos em desenvolvimento: {str(e)}', 'info')
+        return redirect(url_for('atendimentos'))
 
 # ==================== MÓDULO DE RELATÓRIOS ====================
 
@@ -830,6 +1008,16 @@ def admin_backup():
     flash('Funcionalidade de backup em desenvolvimento', 'info')
     return redirect(url_for('admin_dashboard'))
 
+# ==================== TRATAMENTO DE ERROS ====================
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('errors/500.html'), 500
 
 if __name__ == '__main__':
     print("🏥 Iniciando Sistema Clínica Estética")

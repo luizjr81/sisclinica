@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Atendimento - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-stethoscope me-2"></i>Detalhes do Atendimento
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-xl-10 col-lg-12">
+            <!-- Informações do Atendimento -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Informações do Atendimento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Paciente</label>
+                                <div class="fw-bold">{{ atendimento.paciente_nome }}</div>
+                                <small class="text-muted">{{ formatar_cpf(atendimento.paciente_cpf) }}</small>
+                            </div>
+                            
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Profissional</label>
+                                <div class="fw-bold">{{ atendimento.profissional_nome }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Data do Atendimento</label>
+                                <div class="fw-bold">{{ atendimento.Atendimento.data_atendimento.strftime('%d/%m/%Y') }}</div>
+                            </div>
+                            
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Status</label>
+                                <div>
+                                    {% if atendimento.Atendimento.status == 'pago' %}
+                                        <span class="badge bg-success">Pago</span>
+                                    {% elif atendimento.Atendimento.status == 'parcial' %}
+                                        <span class="badge bg-warning">Pago Parcial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pendente</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Valor Total</label>
+                                <div class="fw-bold text-success fs-4">R$ {{ "%.2f"|format(atendimento.Atendimento.valor_total) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Registrado em</label>
+                                <div class="text-muted">{{ atendimento.Atendimento.criado_em.strftime('%d/%m/%Y às %H:%M') }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if atendimento.Atendimento.descricao %}
+                    <div class="info-group">
+                        <label class="text-muted small">Descrição/Observações</label>
+                        <div class="border rounded p-3 bg-light">
+                            {{ atendimento.Atendimento.descricao }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Ações Disponíveis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% if atendimento.Atendimento.status != 'pago' %}
+                            <div class="d-grid mb-3">
+                                <a href="{{ url_for('novo_pagamento', atendimento_id=atendimento.Atendimento.id) }}" 
+                                   class="btn btn-success btn-lg">
+                                    <i class="fas fa-credit-card me-2"></i>Registrar Pagamento
+                                </a>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-grid mb-3">
+                                <button class="btn btn-primary btn-lg" onclick="window.print()">
+                                    <i class="fas fa-print me-2"></i>Imprimir Comprovante
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle me-2"></i>Informações
+                                </h6>
+                                <ul class="mb-0">
+                                    <li>Use "Registrar Pagamento" para quitar valores pendentes</li>
+                                    <li>O comprovante pode ser impresso para o paciente</li>
+                                    <li>Histórico de pagamentos será exibido aqui quando disponível</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voltar -->
+            <div class="mt-4">
+                <a href="{{ url_for('atendimentos') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar para Lista
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .info-group {
+        margin-bottom: 1rem;
+    }
+
+    .info-group label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+
+    @media print {
+        .btn, .alert, .card-header {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
