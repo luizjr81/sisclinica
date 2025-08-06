@@ -743,9 +743,21 @@ def novo_atendimento():
             flash('Atendimento registrado com sucesso!', 'success')
             return redirect(url_for('atendimentos'))
             
+        except (ValueError, TypeError) as e:
+            db.session.rollback()
+            flash(f'Erro de dados no formulário: {str(e)}', 'error')
+            # Re-render form on error
+            pacientes = Paciente.query.order_by(Paciente.nome).all()
+            profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
+            procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
+            return render_template('atendimentos/form.html',
+                                 pacientes=pacientes,
+                                 profissionais=profissionais,
+                                 procedimentos=procedimentos,
+                                 dados=request.form)
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro ao registrar atendimento: {str(e)}', 'error')
+            flash(f'Erro inesperado ao registrar atendimento: {str(e)}', 'error')
             # Re-render form on error
             pacientes = Paciente.query.order_by(Paciente.nome).all()
             profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
