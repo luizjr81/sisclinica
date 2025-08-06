@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Atendimento - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-stethoscope me-2"></i>Novo Atendimento
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-xl-10 col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Registrar Novo Atendimento</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="atendimentoForm">
+                        <div class="row">
+                            <!-- Seleção de Paciente -->
+                            <div class="col-md-6 mb-4">
+                                <label for="paciente_id" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Paciente *
+                                </label>
+                                <select class="form-control" id="paciente_id" name="paciente_id" required>
+                                    <option value="">Selecione o paciente...</option>
+                                    {% for paciente in pacientes %}
+                                    <option value="{{ paciente.id }}" data-observacoes="{{ paciente.observacoes or '' }}">
+                                        {{ paciente.nome }} - {{ formatar_cpf(paciente.cpf) }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <a href="{{ url_for('cadastrar_paciente') }}" target="_blank">
+                                        <i class="fas fa-plus me-1"></i>Cadastrar novo paciente
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Seleção de Profissional -->
+                            <div class="col-md-6 mb-4">
+                                <label for="profissional_id" class="form-label">
+                                    <i class="fas fa-user-md me-1"></i>Profissional *
+                                </label>
+                                <select class="form-control" id="profissional_id" name="profissional_id" required>
+                                    <option value="">Selecione o profissional...</option>
+                                    {% for profissional in profissionais %}
+                                    <option value="{{ profissional.id }}">
+                                        {{ profissional.nome }}
+                                        {% if profissional.especialidade %} - {{ profissional.especialidade }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Observações do Paciente -->
+                        <div class="mb-4" id="paciente-observacoes" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle me-2"></i>Observações do Paciente
+                                </h6>
+                                <p id="observacoes-text" class="mb-0"></p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Data do Atendimento -->
+                            <div class="col-md-6 mb-4">
+                                <label for="data_atendimento" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Data do Atendimento *
+                                </label>
+                                <input type="date" class="form-control" id="data_atendimento" name="data_atendimento" 
+                                       value="{{ date.today() }}" required>
+                            </div>
+
+                            <!-- Campo de busca rápida -->
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">
+                                    <i class="fas fa-search me-1"></i>Busca Rápida de Procedimentos
+                                </label>
+                                <input type="text" class="form-control" id="busca-procedimento" 
+                                       placeholder="Digite para buscar procedimentos...">
+                            </div>
+                        </div>
+
+                        <!-- Seleção de Procedimentos -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-list me-1"></i>Procedimentos Realizados *
+                            </label>
+                            <div class="card">
+                                <div class="card-body">
+                                    <div id="procedimentos-container">
+                                        <!-- Procedimentos serão adicionados aqui via JavaScript -->
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary" id="adicionar-procedimento">
+                                        <i class="fas fa-plus me-2"></i>Adicionar Procedimento
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Descrição/Anotações -->
+                        <div class="mb-4">
+                            <label for="descricao" class="form-label">
+                                <i class="fas fa-edit me-1"></i>Descrição/Anotações do Atendimento
+                            </label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="4"
+                                      placeholder="Descreva o atendimento realizado, observações importantes..."></textarea>
+                        </div>
+
+                        <!-- Desconto -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">
+                                    <i class="fas fa-percentage me-1"></i>Tipo de Desconto
+                                </label>
+                                <select class="form-control" id="desconto_tipo" name="desconto_tipo">
+                                    <option value="valor">Valor (R$)</option>
+                                    <option value="percentual">Percentual (%)</option>
+                                </select>
+                            </div>
+                            <div class="

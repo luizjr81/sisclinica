@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{% if procedimento %}Editar{% else %}Novo{% endif %} Procedimento</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="nome" class="form-label">Nome do Procedimento *</label>
+                <input type="text" class="form-control" name="nome" required
+                       value="{{ dados.nome if dados else (procedimento.nome if procedimento else '') }}"
+                       placeholder="Ex: Limpeza de Pele, Botox, Preenchimento...">
+            </div>
+
+            <div class="mb-3">
+                <label for="valor" class="form-label">Valor *</label>
+                <div class="input-group">
+                    <span class="input-group-text">R$</span>
+                    <input type="number" class="form-control" name="valor" required step="0.01" min="0"
+                           value="{{ dados.valor if dados else (procedimento.valor if procedimento else '') }}"
+                           placeholder="0,00">
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {% if procedimento %}Atualizar{% else %}Cadastrar{% endif %} Procedimento
+                </button>
+                <a href="{{ url_for('procedimentos') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

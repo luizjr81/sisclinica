@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}Central de Relatórios{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h4 class="alert-heading">
+                    <i class="fas fa-chart-bar me-2"></i>Central de Relatórios
+                </h4>
+                <p class="mb-0">Acesse relatórios detalhados sobre o funcionamento da sua clínica.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Relatório Financeiro -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card report-card h-100">
+                <div class="card-body text-center">
+                    <div class="report-icon bg-success text-white rounded-circle mb-3 mx-auto">
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Relatório Financeiro</h5>
+                    <p class="card-text text-muted">
+                        Acompanhe receitas, formas de pagamento e evolução financeira por período.
+                    </p>
+                    <a href="{{ url_for('relatorio_financeiro') }}" class="btn btn-success">
+                        <i class="fas fa-chart-line me-2"></i>Ver Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relatório de Pendências -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card report-card h-100">
+                <div class="card-body text-center">
+                    <div class="report-icon bg-warning text-white rounded-circle mb-3 mx-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Pendências</h5>
+                    <p class="card-text text-muted">
+                        Lista completa de atendimentos com pagamentos pendentes ou parciais.
+                    </p>
+                    <a href="{{ url_for('relatorio_pendencias') }}" class="btn btn-warning">
+                        <i class="fas fa-clock me-2"></i>Ver Pendências
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relatório de Procedimentos -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card report-card h-100">
+                <div class="card-body text-center">
+                    <div class="report-icon bg-primary text-white rounded-circle mb-3 mx-auto">
+                        <i class="fas fa-list fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Procedimentos</h5>
+                    <p class="card-text text-muted">
+                        Análise dos procedimentos mais realizados e sua performance financeira.
+                    </p>
+                    <a href="{{ url_for('relatorio_procedimentos') }}" class="btn btn-primary">
+                        <i class="fas fa-chart-pie me-2"></i>Ver Análise
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relatório por Paciente -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card report-card h-100">
+                <div class="card-body text-center">
+                    <div class="report-icon bg-info text-white rounded-circle mb-3 mx-auto">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Por Paciente</h5>
+                    <p class="card-text text-muted">
+                        Histórico completo de atendimentos e pagamentos por paciente específico.
+                    </p>
+                    <a href="#" class="btn btn-info" onclick="alert('Em desenvolvimento')">
+                        <i class="fas fa-user me-2"></i>Em Breve
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relatório de Profissionais -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card report-card h-100">
+                <div class="card-body text-center">
+                    <div class="report-icon bg-secondary text-white rounded-circle mb-3 mx-auto">
+                        <i class="fas fa-user-md fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Por Profissional</h5>
+                    <p class="card-text text-muted">
+                        Performance individual dos profissionais e comparativo de produtividade.
+                    </p>
+                    <a href="#" class="btn btn-secondary" onclick="alert('Em desenvolvimento')">
+                        <i class="fas fa-chart-bar me-2"></i>Em Breve
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fluxo de Caixa -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card report-card h-100">
+                <div class="card-body text-center">
+                    <div class="report-icon bg-dark text-white rounded-circle mb-3 mx-auto">
+                        <i class="fas fa-exchange-alt fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Fluxo de Caixa</h5>
+                    <p class="card-text text-muted">
+                        Entradas, saídas e saldo diário, semanal e mensal da clínica.
+                    </p>
+                    <a href="#" class="btn btn-dark" onclick="alert('Em desenvolvimento')">
+                        <i class="fas fa-calculator me-2"></i>Em Breve
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dicas -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-lightbulb me-2 text-warning"></i>Dicas dos Relatórios
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <strong>Financeiro:</strong> Ideal para análise mensal e trimestral
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <strong>Pendências:</strong> Consulte semanalmente para controle
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <strong>Procedimentos:</strong> Use para planejamento de estoque
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <strong>Exportação:</strong> Todos os relatórios podem ser impressos
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .report-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .report-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .report-icon {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-text {
+        min-height: 60px;
+    }
+
+    @media (max-width: 768px) {
+        .report-icon {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .report-icon i {
+            font-size: 1.5rem !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Animação de entrada dos cards
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.report-card');
+        cards.forEach((card, index) => {
+            setTimeout(() => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'all 0.5s ease';
+                
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100 * index);
+            }, 0);
+        });
+    });
+</script>
+{% endblock %}

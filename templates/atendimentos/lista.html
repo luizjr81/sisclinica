@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Atendimentos - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}Gerenciar Atendimentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="Buscar por paciente..." 
+                                   value="{{ search }}"
+                                   autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-control" name="status">
+                                <option value="">Todos os Status</option>
+                                <option value="pendente" {% if status == 'pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="parcial" {% if status == 'parcial' %}selected{% endif %}>Pago Parcial</option>
+                                <option value="pago" {% if status == 'pago' %}selected{% endif %}>Pago</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100" type="submit">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('novo_atendimento') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-stethoscope me-2"></i>Novo Atendimento
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--primary-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--primary-color);">{{ atendimentos.total }}</div>
+                        <div class="stat-label">Total de Atendimentos</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-stethoscope fa-2x" style="color: var(--primary-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--accent-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--accent-color);">
+                            {% set pagos = atendimentos.items | selectattr('Atendimento.status', 'equalto', 'pago') | list %}
+                            {{ pagos | length }}
+                        </div>
+                        <div class="stat-label">Pagos</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle fa-2x" style="color: var(--accent-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--warning-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--warning-color);">
+                            {% set pendentes = atendimentos.items | selectattr('Atendimento.status', 'equalto', 'pendente') | list %}
+                            {{ pendentes | length }}
+                        </div>
+                        <div class="stat-label">Pendentes</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clock fa-2x" style="color: var(--warning-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--danger-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--danger-color);">
+                            {% set total_valor = atendimentos.items | sum(attribute='Atendimento.valor_total') %}
+                            R$ {{ "%.2f"|format(total_valor) }}
+                        </div>
+                        <div class="stat-label">Valor Total</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-dollar-sign fa-2x" style="color: var(--danger-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appointments List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stethoscope me-2"></i>Lista de Atendimentos
+                        {% if search or status %}
+                            <small class="text-muted">
+                                (
+                                {% if search %}Busca: "{{ search }}"{% endif %}
+                                {% if search and status %} • {% endif %}
+                                {% if status %}Status: {{ status|title }}{% endif %}
+                                )
+                            </small>
+                        {% endif %}
+                    </h5>
+                    <span class="badge bg-primary fs-6">
+                        {{ atendimentos.total }} atendimento(s)
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    {% if atendimentos.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Paciente</th>
+                                        <th>Profissional</th>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                        <th>Status</th>
+                                        <th width="120">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for atendimento, paciente_nome, profissional_nome in atendimentos.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                    {{ paciente_nome[0].upper() }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ paciente_nome }}</strong>
+                                                    {% if atendimento.descricao %}
+                                                        <br><small class="text-muted">{{ atendimento.descricao[:50] }}{% if atendimento.descricao|length > 50 %}...{% endif %}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-user-md text-primary me-1"></i>
+                                            {{ profissional_nome }}
+                                        </td>
+                                        <td>
+                                            <strong>{{ atendimento.data_atendimento.strftime('%d/%m/%Y') }}</strong>
+                                            <br><small class="text-muted">{{ atendimento.criado_em.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <strong class="text-success">R$ {{ "%.2f"|format(atendimento.valor_total) }}</strong>
+                                            {% if atendimento.desconto_valor > 0 or atendimento.desconto_percentual > 0 %}
+                                                <br><small class="text-warning">
+                                                    <i class="fas fa-tag"></i> Desconto aplicado
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if atendimento.status == 'pago' %}
+                                                <span class="badge bg-success">Pago</span>
+                                            {% elif atendimento.status == 'parcial' %}
+                                                <span class="badge bg-warning">Parcial</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Pendente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('ver_atendimento', id=atendimento.id) }}" 
+                                                   class="btn btn-outline-info" title="Ver detalhes">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if atendimento.status != 'pago' %}
+                                                <a href="#" onclick="processarPagamento({{ atendimento.id }})" 
+                                                   class="btn btn-outline-success" title="Registrar pagamento">
+                                                    <i class="fas fa-credit-card"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if atendimentos.pages > 1 %}
+                        <div class="card-footer">
+                            <nav>
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if atendimentos.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('atendimentos', page=atendimentos.prev_num, search=search, status=status) }}">
+                                                <i class="fas fa-chevron-left"></i> Anterior
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for page_num in atendimentos.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != atendimentos.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('atendimentos', page=page_num, search=search, status=status) }}">
+                                                        {{ page_num }}
+                                                    </a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if atendimentos.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('atendimentos', page=atendimentos.next_num, search=search, status=status) }}">
+                                                Próximo <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <!-- Empty State -->
+                        <div class="text-center py-5">
+                            {% if search or status %}
+                                <i class="fas fa-search-minus fa-4x text-muted mb-3"></i>
+                                <h4 class="text-muted">Nenhum atendimento encontrado</h4>
+                                <p class="text-muted">Ajuste os filtros ou realize uma nova busca</p>
+                                <a href="{{ url_for('atendimentos') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-times me-2"></i>Limpar Filtros
+                                </a>
+                            {% else %}
+                                <i class="fas fa-stethoscope fa-4x text-muted mb-3"></i>
+                                <h4 class="text-muted">Nenhum atendimento registrado</h4>
+                                <p class="text-muted">Comece registrando o primeiro atendimento</p>
+                                <a href="{{ url_for('novo_atendimento') }}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-stethoscope me-2"></i>Registrar Primeiro Atendimento
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-sm {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .btn-group-sm > .btn {
+        padding: 0.375rem 0.5rem;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+        
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.375rem;
+        }
+        
+        .avatar-sm {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function processarPagamento(atendimentoId) {
+        // Redirecionar para página de pagamento (será implementada na próxima fase)
+        window.location.href = '/pagamentos/novo/' + atendimentoId;
+    }
+
+    // Auto-focus search input
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput && !searchInput.value) {
+            searchInput.focus();
+        }
+    });
+
+    // Clear search on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const searchInput = document.querySelector('input[name="search"]');
+            if (searchInput && searchInput.value) {
+                searchInput.value = '';
+                document.querySelector('select[name="status"]').value = '';
+                searchInput.form.submit();
+            }
+        }
+    });
+</script>
+{% endblock %}

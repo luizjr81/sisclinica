@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card mb-3 bg-primary text-white">
+    <div class="card-body">
+        <h5>{{ paciente.nome }}</h5>
+        <p class="mb-0">CPF: {{ formatar_cpf(paciente.cpf) }} | Idade: {{ calcular_idade(paciente.data_nascimento) }} anos</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>{% if anamnese %}Editar Anamnese{% else %}Nova Anamnese{% endif %}</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="conteudo" class="form-label">Conteúdo da Anamnese</label>
+                <textarea class="form-control" name="conteudo" rows="20" required 
+                    placeholder="Digite aqui as informações da anamnese...">{{ anamnese.conteudo if anamnese else '' }}</textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {% if anamnese %}Atualizar{% else %}Salvar{% endif %} Anamnese
+                </button>
+                <button type="submit" name="salvar_como" value="1" class="btn btn-success">
+                    Salvar Como Nova
+                </button>
+                <a href="{{ url_for('pacientes') }}" class="btn btn-secondary">Voltar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

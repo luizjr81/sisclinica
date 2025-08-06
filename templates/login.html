@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Sistema Clínica Estética{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-spa me-2"></i>Sistema Clínica Estética</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user me-1"></i>Usuário
+                        </label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="Digite seu usuário" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="senha" class="form-label">
+                            <i class="fas fa-lock me-1"></i>Senha
+                        </label>
+                        <input type="password" class="form-control" id="senha" name="senha" 
+                               placeholder="Digite sua senha" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="fas fa-sign-in-alt me-2"></i>Entrar
+                    </button>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <div class="alert alert-info">
+                        <strong>Usuário padrão:</strong> admin<br>
+                        <strong>Senha padrão:</strong> admin123
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+    }
+    
+    .card {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        border: none;
+        border-radius: 15px;
+    }
+    
+    .card-header {
+        background: var(--primary-color);
+        color: white;
+        border-radius: 15px 15px 0 0 !important;
+    }
+</style>
+{% endblock %}

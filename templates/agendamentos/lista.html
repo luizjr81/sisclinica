@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Agendamentos - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}Agenda do Dia{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header com Seleção de Data -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="data" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Selecionar Data
+                            </label>
+                            <input type="date" class="form-control" name="data" 
+                                   value="{{ data_selecionada.strftime('%Y-%m-%d') }}"
+                                   onchange="this.form.submit()">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary" 
+                                    onclick="selecionarData('{{ hoje.strftime('%Y-%m-%d') }}')">
+                                <i class="fas fa-calendar-day me-1"></i>Hoje
+                            </button>
+                            <button type="button" class="btn btn-outline-success" 
+                                    onclick="selecionarData('{{ (hoje + timedelta(days=1)).strftime('%Y-%m-%d') }}')">
+                                <i class="fas fa-arrow-right me-1"></i>Amanhã
+                            </button>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <div class="text-muted">
+                                <strong>{{ data_selecionada.strftime('%d/%m/%Y') }}</strong>
+                                <br>{{ data_selecionada.strftime('%A')|title }}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('novo_agendamento') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-calendar-plus me-2"></i>Novo Agendamento
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas do Dia -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number">{{ agendamentos|length }}</div>
+                        <div class="stat-label">Total Agendados</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar fa-2x" style="color: var(--primary-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--accent-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--accent-color);">
+                            {% set realizados = agendamentos | selectattr('Agendamento.status', 'equalto', 'realizado') | list %}
+                            {{ realizados | length }}
+                        </div>
+                        <div class="stat-label">Realizados</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle fa-2x" style="color: var(--accent-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--warning-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--warning-color);">
+                            {% set pendentes = agendamentos | selectattr('Agendamento.status', 'equalto', 'agendado') | list %}
+                            {{ pendentes | length }}
+                        </div>
+                        <div class="stat-label">Pendentes</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clock fa-2x" style="color: var(--warning-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--danger-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--danger-color);">
+                            {% set cancelados = agendamentos | selectattr('Agendamento.status', 'equalto', 'cancelado') | list %}
+                            {{ cancelados | length }}
+                        </div>
+                        <div class="stat-label">Cancelados</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-times-circle fa-2x" style="color: var(--danger-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Agendamentos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        Agendamentos - {{ data_selecionada.strftime('%d/%m/%Y') }}
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if agendamentos %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Horário</th>
+                                        <th>Paciente</th>
+                                        <th>Profissional</th>
+                                        <th>Observações</th>
+                                        <th>Status</th>
+                                        <th width="150">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agendamento, paciente_nome, paciente_telefone, profissional_nome in agendamentos %}
+                                    <tr class="{% if agendamento.status == 'cancelado' %}table-secondary{% endif %}">
+                                        <td>
+                                            <div class="time-slot">
+                                                <strong class="text-primary">{{ agendamento.data_hora.strftime('%H:%M') }}</strong>
+                                                <br><small class="text-muted">{{ agendamento.criado_em.strftime('%d/%m') }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                    {{ paciente_nome[0].upper() }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ paciente_nome }}</strong>
+                                                    {% if paciente_telefone %}
+                                                        <br><small class="text-muted">
+                                                            <i class="fas fa-phone me-1"></i>{{ paciente_telefone }}
+                                                        </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-user-md text-primary me-1"></i>
+                                            {{ profissional_nome }}
+                                        </td>
+                                        <td>
+                                            {% if agendamento.observacoes %}
+                                                <span class="text-muted">{{ agendamento.observacoes[:50] }}{% if agendamento.observacoes|length > 50 %}...{% endif %}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if agendamento.status == 'agendado' %}
+                                                <span class="badge bg-primary">Agendado</span>
+                                            {% elif agendamento.status == 'realizado' %}
+                                                <span class="badge bg-success">Realizado</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Cancelado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                {% if agendamento.status == 'agendado' %}
+                                                    <button onclick="marcarRealizado({{ agendamento.id }})" 
+                                                            class="btn btn-outline-success" title="Marcar como realizado">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button onclick="cancelarAgendamento({{ agendamento.id }})" 
+                                                            class="btn btn-outline-danger" title="Cancelar">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                {% elif agendamento.status == 'realizado' %}
+                                                    <button onclick="voltarAgendado({{ agendamento.id }})" 
+                                                            class="btn btn-outline-warning" title="Voltar para agendado">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                {% else %}
+                                                    <button onclick="voltarAgendado({{ agendamento.id }})" 
+                                                            class="btn btn-outline-primary" title="Reagendar">
+                                                        <i class="fas fa-calendar-plus"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">Nenhum agendamento para este dia</h4>
+                            <p class="text-muted">Que tal agendar o primeiro atendimento?</p>
+                            <a href="{{ url_for('novo_agendamento') }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-calendar-plus me-2"></i>Criar Agendamento
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .time-slot {
+        text-align: center;
+        min-width: 80px;
+    }
+
+    .avatar-sm {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .table-secondary {
+        opacity: 0.7;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+        
+        .avatar-sm {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+        
+        .time-slot {
+            min-width: 60px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function selecionarData(data) {
+        window.location.href = `{{ url_for('agendamentos') }}?data=${data}`;
+    }
+
+    function marcarRealizado(id) {
+        if (confirm('Marcar este agendamento como realizado?')) {
+            atualizarStatus(id, 'realizado');
+        }
+    }
+
+    function cancelarAgendamento(id) {
+        if (confirm('Cancelar este agendamento?')) {
+            atualizarStatus(id, 'cancelado');
+        }
+    }
+
+    function voltarAgendado(id) {
+        if (confirm('Voltar este agendamento para status agendado?')) {
+            atualizarStatus(id, 'agendado');
+        }
+    }
+
+    function atualizarStatus(id, status) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/agendamentos/${id}/status`;
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'status';
+        input.value = status;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Atualizar página a cada 5 minutos
+    setInterval(function() {
+        window.location.reload();
+    }, 300000);
+</script>
+{% endblock %}

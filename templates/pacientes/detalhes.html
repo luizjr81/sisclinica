@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ paciente.nome }}</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Informações Básicas</div>
+            <div class="card-body">
+                <p><strong>CPF:</strong> {{ formatar_cpf(paciente.cpf) }}</p>
+                <p><strong>Idade:</strong> {{ calcular_idade(paciente.data_nascimento) }} anos</p>
+                <p><strong>Telefone:</strong> {{ paciente.telefone or '-' }}</p>
+                <p><strong>Gosto Musical:</strong> {{ paciente.gosto_musical or '-' }}</p>
+                {% if paciente.observacoes %}
+                <p><strong>Observações:</strong> {{ paciente.observacoes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('pacientes') }}" class="btn btn-secondary">Voltar</a>
+    <a href="{{ url_for('nova_anamnese', paciente_id=paciente.id) }}" class="btn btn-success">Nova Anamnese</a>
+</div>
+{% endblock %}

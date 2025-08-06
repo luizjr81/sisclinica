@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Dashboard</h1>
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5>{{ total_pacientes }}</h5>
+                <p>Pacientes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5>{{ atendimentos_hoje }}</h5>
+                <p>Atendimentos Hoje</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5>R$ {{ "%.2f"|format(valores_recebidos_hoje) }}</h5>
+                <p>Recebido Hoje</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5>{{ agendamentos_hoje }}</h5>
+                <p>Agendados Hoje</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

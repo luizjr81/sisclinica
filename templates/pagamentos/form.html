@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Pagamento - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-credit-card me-2"></i>Registrar Pagamento
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <!-- Informações do Atendimento -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Informações do Atendimento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Paciente</label>
+                                <div class="fw-bold">{{ atendimento.paciente_nome }}</div>
+                                <small class="text-muted">{{ formatar_cpf(atendimento.paciente_cpf) }}</small>
+                            </div>
+                            
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Profissional</label>
+                                <div class="fw-bold">{{ atendimento.profissional_nome }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Data do Atendimento</label>
+                                <div class="fw-bold">{{ atendimento.Atendimento.data_atendimento.strftime('%d/%m/%Y') }}</div>
+                            </div>
+                            
+                            <div class="info-group mb-3">
+                                <label class="text-muted small">Status Atual</label>
+                                <div>
+                                    {% if atendimento.Atendimento.status == 'pago' %}
+                                        <span class="badge bg-success">Pago</span>
+                                    {% elif atendimento.Atendimento.status == 'parcial' %}
+                                        <span class="badge bg-warning">Pago Parcial</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Pendente</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo Financeiro -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Resumo Financeiro
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <div class="financial-stat">
+                                <div class="value text-primary">R$ {{ "%.2f"|format(atendimento.Atendimento.valor_total) }}</div>
+                                <div class="label">Valor Total</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="financial-stat">
+                                <div class="value text-success">R$ {{ "%.2f"|format(valor_pago) }}</div>
+                                <div class="label">Já Pago</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="financial-stat">
+                                <div class="value text-danger">R$ {{ "%.2f"|format(valor_pendente) }}</div>
+                                <div class="label">Valor Pendente</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário de Pagamento -->
+            <div class="card">
+                <div class="card-header">
+                    
