@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários do Sistema - Administração{% endblock %}
+
+{% block page_title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Gestão de Usuários:</strong> Controle total sobre usuários e permissões do sistema.
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-primary btn-lg" onclick="alert('Funcionalidade em desenvolvimento')">
+                    <i class="fas fa-user-plus me-2"></i>Novo Usuário
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Usuários -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>Usuários do Sistema
+                    </h5>
+                    <span class="badge bg-primary fs-6">
+                        {{ usuarios|length }} usuário(s)
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    {% if usuarios %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>E-mail</th>
+                                        <th>Tipo</th>
+                                        <th>Status</th>
+                                        <th>Criado em</th>
+                                        <th width="120">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for usuario in usuarios %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                    {{ usuario.username[0].upper() }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ usuario.username }}</strong>
+                                                    {% if usuario.username == session.username %}
+                                                        <span class="badge bg-info ms-2">Você</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ usuario.email }}</td>
+                                        <td>
+                                            {% if usuario.tipo == 'admin' %}
+                                                <span class="badge bg-danger">Administrador</span>
+                                            {% elif usuario.tipo == 'profissional' %}
+                                                <span class="badge bg-success">Profissional</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Atendente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if usuario.ativo %}
+                                                <span class="badge bg-success">Ativo</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inativo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ usuario.criado_em.strftime('%d/%m/%Y %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                {% if usuario.username != session.username %}
+                                                <button class="btn btn-outline-warning" 
+                                                        onclick="toggleUsuario({{ usuario.id }}, '{{ usuario.username }}')"
+                                                        title="{% if usuario.ativo %}Desativar{% else %}Ativar{% endif %}">
+                                                    <i class="fas fa-{% if usuario.ativo %}ban{% else %}check{% endif %}"></i>
+                                                </button>
+                                                {% endif %}
+                                                <button class="btn btn-outline-primary" 
+                                                        onclick="editarUsuario({{ usuario.id }})" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <!-- Empty State -->
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">Nenhum usuário encontrado</h4>
+                            <p class="text-muted">Parece que há um problema com o banco de dados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações Sobre Tipos de Usuário -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>Tipos de Usuário
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <span class="badge bg-danger me-2">Administrador</span>
+                                <p class="mb-0 small text-muted">Acesso total ao sistema</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <span class="badge bg-success me-2">Profissional</span>
+                                <p class="mb-0 small text-muted">Pode realizar atendimentos</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <span class="badge bg-secondary me-2">Atendente</span>
+                                <p class="mb-0 small text-muted">Acesso limitado ao sistema</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-sm {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .btn-group-sm > .btn {
+        padding: 0.375rem 0.5rem;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+        
+        .avatar-sm {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleUsuario(id, username) {
+        const acao = event.target.closest('button').title;
+        
+        if (confirm(`${acao} o usuário "${username}"?`)) {
+            // Aqui seria feita a requisição para ativar/desativar
+            alert('Funcionalidade em desenvolvimento');
+        }
+    }
+
+    function editarUsuario(id) {
+        // Aqui seria aberto o formulário de edição
+        alert('Funcionalidade de edição em desenvolvimento');
+    }
+
+    // Proteção contra alteração acidental do próprio usuário
+    document.addEventListener('DOMContentLoaded', function() {
+        const userRows = document.querySelectorAll('tbody tr');
+        userRows.forEach(row => {
+            const badge = row.querySelector('.badge.bg-info');
+            if (badge && badge.textContent === 'Você') {
+                row.style.backgroundColor = 'rgba(139, 92, 246, 0.05)';
+            }
+        });
+    });
+</script>
+{% endblock %}

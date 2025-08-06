@@ -74,6 +74,44 @@ class Procedimento(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     valor = db.Column(db.Numeric(10, 2), nullable=False)
     ativo = db.Column(db.Boolean, default=True)
+    
+class Atendimento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('paciente.id'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissional.id'), nullable=False)
+    data_atendimento = db.Column(db.Date, nullable=False)
+    descricao = db.Column(db.Text)
+    valor_total = db.Column(db.Numeric(10, 2), default=0)
+    desconto_valor = db.Column(db.Numeric(10, 2), default=0)
+    desconto_percentual = db.Column(db.Numeric(5, 2), default=0)
+    status = db.Column(db.String(20), default='pendente')  # pendente, parcial, pago
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+class AtendimentoProcedimento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    atendimento_id = db.Column(db.Integer, db.ForeignKey('atendimento.id'), nullable=False)
+    procedimento_id = db.Column(db.Integer, db.ForeignKey('procedimento.id'), nullable=False)
+    quantidade = db.Column(db.Integer, default=1)
+    valor_unitario = db.Column(db.Numeric(10, 2), nullable=False)
+    valor_total = db.Column(db.Numeric(10, 2), nullable=False)
+
+class Agendamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('paciente.id'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissional.id'), nullable=False)
+    data_hora = db.Column(db.DateTime, nullable=False)
+    observacoes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='agendado')  # agendado, realizado, cancelado
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Pagamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    atendimento_id = db.Column(db.Integer, db.ForeignKey('atendimento.id'), nullable=False)
+    valor = db.Column(db.Numeric(10, 2), nullable=False)
+    forma_pagamento = db.Column(db.String(50), nullable=False)  # dinheiro, cartao, pix
+    data_pagamento = db.Column(db.Date, nullable=False)
+    observacoes = db.Column(db.Text)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)    
 
 # ==================== DECORADORES ====================
 
@@ -568,6 +606,230 @@ def test():
         'database': 'Conectado' if testar_conexao_banco() else 'Erro',
         'tables': [table.name for table in db.metadata.tables.values()]
     })
+
+# ==================== MÓDULO DE ATENDIMENTOS ====================
+
+@app.route('/atendimentos')
+@login_required
+def atendimentos():
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    status = request.args.get('status', '')
+    
+    # Como não temos a tabela Atendimento ainda, vamos retornar uma página vazia por enquanto
+    return render_template('atendimentos/lista.html', 
+                         atendimentos={'items': [], 'total': 0, 'pages': 1, 'has_prev': False, 'has_next': False},
+                         search=search, 
+                         status=status)
+
+@app.route('/atendimentos/novo')
+@login_required
+def novo_atendimento():
+    pacientes = Paciente.query.order_by(Paciente.nome).all()
+    profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
+    procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
+    
+    return render_template('atendimentos/form.html', 
+                         pacientes=pacientes, 
+                         profissionais=profissionais, 
+                         procedimentos=procedimentos)
+
+@app.route('/atendimentos/<int:id>')
+@login_required
+def ver_atendimento(id):
+    # Por enquanto, redireciona para a lista
+    flash('Funcionalidade em desenvolvimento', 'info')
+    return redirect(url_for('atendimentos'))
+
+# ==================== MÓDULO DE AGENDAMENTOS ====================
+
+@app.route('/agendamentos')
+@login_required
+def agendamentos():
+    data_param = request.args.get('data')
+    if data_param:
+        try:
+            data_selecionada = datetime.strptime(data_param, '%Y-%m-%d').date()
+        except ValueError:
+            data_selecionada = date.today()
+    else:
+        data_selecionada = date.today()
+    
+    hoje = date.today()
+    
+    # Como não temos a tabela Agendamento ainda, retornamos uma lista vazia
+    agendamentos = []
+    
+    return render_template('agendamentos/lista.html',
+                         agendamentos=agendamentos,
+                         data_selecionada=data_selecionada,
+                         hoje=hoje,
+                         timedelta=timedelta)
+
+@app.route('/agendamentos/novo')
+@login_required
+def novo_agendamento():
+    pacientes = Paciente.query.order_by(Paciente.nome).all()
+    profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
+    
+    return render_template('agendamentos/form.html', 
+                         pacientes=pacientes, 
+                         profissionais=profissionais)
+
+@app.route('/agendamentos/<int:id>/status', methods=['POST'])
+@login_required
+def atualizar_status_agendamento(id):
+    # Por enquanto, apenas retorna para a lista
+    flash('Funcionalidade em desenvolvimento', 'info')
+    return redirect(url_for('agendamentos'))
+
+# ==================== MÓDULO DE PROFISSIONAIS ====================
+
+@app.route('/profissionais')
+@login_required
+def profissionais():
+    search = request.args.get('search', '')
+    
+    query = Profissional.query
+    if search:
+        query = query.filter(Profissional.nome.ilike(f'%{search}%'))
+    
+    profissionais = query.order_by(Profissional.nome).all()
+    
+    return render_template('profissionais/lista.html', 
+                         profissionais=profissionais, 
+                         search=search)
+
+@app.route('/profissionais/novo', methods=['GET', 'POST'])
+@login_required
+def cadastrar_profissional():
+    if request.method == 'POST':
+        nome = request.form['nome']
+        especialidade = request.form.get('especialidade', '')
+        telefone = request.form.get('telefone', '')
+        email = request.form.get('email', '')
+        
+        # Verificar se já existe
+        if Profissional.query.filter_by(nome=nome, ativo=True).first():
+            flash('Já existe um profissional com este nome!', 'error')
+            return render_template('profissionais/form.html', dados=request.form)
+        
+        profissional = Profissional(
+            nome=nome,
+            especialidade=especialidade,
+            telefone=telefone,
+            email=email
+        )
+        
+        db.session.add(profissional)
+        db.session.commit()
+        
+        flash(f'Profissional {nome} cadastrado com sucesso!', 'success')
+        return redirect(url_for('profissionais'))
+    
+    return render_template('profissionais/form.html')
+
+@app.route('/profissionais/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_profissional(id):
+    profissional = Profissional.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        nome = request.form['nome']
+        especialidade = request.form.get('especialidade', '')
+        telefone = request.form.get('telefone', '')
+        email = request.form.get('email', '')
+        
+        # Verificar se nome já existe (exceto o atual)
+        existente = Profissional.query.filter(
+            Profissional.nome == nome,
+            Profissional.id != id,
+            Profissional.ativo == True
+        ).first()
+        
+        if existente:
+            flash('Já existe um profissional com este nome!', 'error')
+            return render_template('profissionais/form.html', profissional=profissional, dados=request.form)
+        
+        profissional.nome = nome
+        profissional.especialidade = especialidade
+        profissional.telefone = telefone
+        profissional.email = email
+        
+        db.session.commit()
+        
+        flash(f'Dados do profissional {nome} atualizados!', 'success')
+        return redirect(url_for('profissionais'))
+    
+    return render_template('profissionais/form.html', profissional=profissional)
+
+# ==================== MÓDULO DE PAGAMENTOS ====================
+
+@app.route('/pagamentos')
+@login_required
+def pagamentos():
+    # Redireciona para atendimentos por enquanto
+    return redirect(url_for('atendimentos'))
+
+@app.route('/pagamentos/novo/<int:atendimento_id>')
+@login_required
+def novo_pagamento(atendimento_id):
+    flash('Módulo de pagamentos em desenvolvimento', 'info')
+    return redirect(url_for('atendimentos'))
+
+# ==================== MÓDULO DE RELATÓRIOS ====================
+
+@app.route('/relatorios')
+@login_required
+def relatorios():
+    return render_template('relatorios/index.html')
+
+@app.route('/relatorios/financeiro')
+@login_required
+def relatorio_financeiro():
+    flash('Relatório financeiro em desenvolvimento', 'info')
+    return redirect(url_for('relatorios'))
+
+@app.route('/relatorios/pendencias')
+@login_required
+def relatorio_pendencias():
+    flash('Relatório de pendências em desenvolvimento', 'info')
+    return redirect(url_for('relatorios'))
+
+@app.route('/relatorios/procedimentos')
+@login_required
+def relatorio_procedimentos():
+    flash('Relatório de procedimentos em desenvolvimento', 'info')
+    return redirect(url_for('relatorios'))
+
+# ==================== MÓDULO DE ADMINISTRAÇÃO ====================
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    total_usuarios = Usuario.query.count()
+    usuarios_ativos = Usuario.query.filter_by(ativo=True).count()
+    total_pacientes = Paciente.query.count()
+    total_procedimentos = Procedimento.query.filter_by(ativo=True).count()
+    
+    return render_template('admin/dashboard.html',
+                         total_usuarios=total_usuarios,
+                         usuarios_ativos=usuarios_ativos,
+                         total_pacientes=total_pacientes,
+                         total_procedimentos=total_procedimentos)
+
+@app.route('/admin/usuarios')
+@admin_required
+def admin_usuarios():
+    usuarios = Usuario.query.order_by(Usuario.username).all()
+    return render_template('admin/usuarios.html', usuarios=usuarios)
+
+@app.route('/admin/backup')
+@admin_required
+def admin_backup():
+    flash('Funcionalidade de backup em desenvolvimento', 'info')
+    return redirect(url_for('admin_dashboard'))
+
 
 if __name__ == '__main__':
     print("🏥 Iniciando Sistema Clínica Estética")

@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Agendamento - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-calendar-plus me-2"></i>Novo Agendamento
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-plus me-2"></i>Agendar Novo Atendimento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="agendamentoForm">
+                        <div class="row">
+                            <!-- Seleção de Paciente -->
+                            <div class="col-md-6 mb-4">
+                                <label for="paciente_id" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Paciente *
+                                </label>
+                                <select class="form-control" id="paciente_id" name="paciente_id" required>
+                                    <option value="">Selecione o paciente...</option>
+                                    {% for paciente in pacientes %}
+                                    <option value="{{ paciente.id }}">
+                                        {{ paciente.nome }} - {{ formatar_cpf(paciente.cpf) }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <a href="{{ url_for('cadastrar_paciente') }}" target="_blank">
+                                        <i class="fas fa-plus me-1"></i>Cadastrar novo paciente
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Seleção de Profissional -->
+                            <div class="col-md-6 mb-4">
+                                <label for="profissional_id" class="form-label">
+                                    <i class="fas fa-user-md me-1"></i>Profissional *
+                                </label>
+                                <select class="form-control" id="profissional_id" name="profissional_id" required>
+                                    <option value="">Selecione o profissional...</option>
+                                    {% for profissional in profissionais %}
+                                    <option value="{{ profissional.id }}">
+                                        {{ profissional.nome }}
+                                        {% if profissional.especialidade %} - {{ profissional.especialidade }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Data -->
+                            <div class="col-md-4 mb-4">
+                                <label for="data" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Data *
+                                </label>
+                                <input type="date" class="form-control" id="data" name="data" 
+                                       value="{{ date.today() }}" required>
+                            </div>
+
+                            <!-- Horário -->
+                            <div class="col-md-4 mb-4">
+                                <label for="horario" class="form-label">
+                                    <i class="fas fa-clock me-1"></i>Horário *
+                                </label>
+                                <input type="time" class="form-control" id="horario" name="horario" required>
+                            </div>
+
+                            <!-- Status -->
+                            <div class="col-md-4 mb-4">
+                                <label for="status" class="form-label">
+                                    <i class="fas fa-info-circle me-1"></i>Status
+                                </label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="agendado">Agendado</option>
+                                    <option value="realizado">Realizado</option>
+                                    <option value="cancelado">Cancelado</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="mb-4">
+                            <label for="observacoes" class="form-label">
+                                <i class="fas fa-comment me-1"></i>Observações
+                            </label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="3"
+                                      placeholder="Observações sobre o agendamento..."></textarea>
+                        </div>
+
+                        <!-- Dicas -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-lightbulb me-2"></i>Dicas para Agendamento
+                            </h6>
+                            <ul class="mb-0">
+                                <li>Verifique a disponibilidade do profissional antes de confirmar</li>
+                                <li>Inclua informações importantes nas observações</li>
+                                <li>O paciente receberá uma confirmação do agendamento</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-calendar-check me-2"></i>Confirmar Agendamento
+                            </button>
+                            <a href="{{ url_for('agendamentos') }}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+
+    .alert-info {
+        border-left: 4px solid var(--primary-color);
+    }
+
+    @media (max-width: 768px) {
+        .btn-lg {
+            font-size: 1rem;
+            padding: 0.75rem 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-focus no primeiro campo
+        document.getElementById('paciente_id').focus();
+
+        // Definir horário padrão (próxima hora cheia)
+        const agora = new Date();
+        agora.setHours(agora.getHours() + 1);
+        agora.setMinutes(0);
+        document.getElementById('horario').value = agora.toTimeString().slice(0, 5);
+
+        // Validação do formulário
+        const form = document.getElementById('agendamentoForm');
+        form.addEventListener('submit', function(e) {
+            const data = new Date(document.getElementById('data').value);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            if (data < hoje) {
+                e.preventDefault();
+                alert('Não é possível agendar para uma data no passado!');
+                document.getElementById('data').focus();
+                return;
+            }
+
+            // Validar se é fim de semana (opcional)
+            if (data.getDay() === 0) { // Domingo
+                if (!confirm('Agendamento para domingo. Confirma?')) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+    });
+
+    // Função para verificar disponibilidade (futura implementação)
+    function verificarDisponibilidade() {
+        const profissionalId = document.getElementById('profissional_id').value;
+        const data = document.getElementById('data').value;
+        const horario = document.getElementById('horario').value;
+        
+        if (profissionalId && data && horario) {
+            // Aqui seria feita uma consulta AJAX para verificar disponibilidade
+            console.log('Verificando disponibilidade...', {profissionalId, data, horario});
+        }
+    }
+
+    // Adicionar listeners para verificação automática
+    document.getElementById('profissional_id').addEventListener('change', verificarDisponibilidade);
+    document.getElementById('data').addEventListener('change', verificarDisponibilidade);
+    document.getElementById('horario').addEventListener('change', verificarDisponibilidade);
+</script>
+{% endblock %}

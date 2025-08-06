@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{% if profissional %}Editar{% else %}Novo{% endif %} Profissional - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-user-md me-2"></i>{% if profissional %}Editar{% else %}Novo{% endif %} Profissional
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        {% if profissional %}
+                            <i class="fas fa-edit me-2"></i>Editar Profissional
+                        {% else %}
+                            <i class="fas fa-user-plus me-2"></i>Cadastrar Novo Profissional
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="profissionalForm">
+                        <div class="row">
+                            <!-- Nome -->
+                            <div class="col-md-8 mb-4">
+                                <label for="nome" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Nome Completo *
+                                </label>
+                                <input type="text" class="form-control" id="nome" name="nome" required
+                                       value="{{ dados.nome if dados else (profissional.nome if profissional else '') }}"
+                                       placeholder="Ex: Dr. João Silva">
+                            </div>
+
+                            <!-- Especialidade -->
+                            <div class="col-md-4 mb-4">
+                                <label for="especialidade" class="form-label">
+                                    <i class="fas fa-stethoscope me-1"></i>Especialidade
+                                </label>
+                                <input type="text" class="form-control" id="especialidade" name="especialidade"
+                                       value="{{ dados.especialidade if dados else (profissional.especialidade if profissional else '') }}"
+                                       placeholder="Ex: Dermatologia, Estética">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Telefone -->
+                            <div class="col-md-6 mb-4">
+                                <label for="telefone" class="form-label">
+                                    <i class="fas fa-phone me-1"></i>Telefone
+                                </label>
+                                <input type="text" class="form-control" id="telefone" name="telefone"
+                                       value="{{ dados.telefone if dados else (profissional.telefone if profissional else '') }}"
+                                       placeholder="(11) 99999-9999"
+                                       oninput="formatarTelefone(this)">
+                            </div>
+
+                            <!-- Email -->
+                            <div class="col-md-6 mb-4">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>E-mail
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email"
+                                       value="{{ dados.email if dados else (profissional.email if profissional else '') }}"
+                                       placeholder="joao@clinica.com.br">
+                            </div>
+                        </div>
+
+                        <!-- Informações Adicionais -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle me-2"></i>Informações Importantes
+                            </h6>
+                            <ul class="mb-0">
+                                <li>O profissional poderá ser associado aos atendimentos e agendamentos</li>
+                                <li>Apenas profissionais ativos aparecem nos formulários</li>
+                                <li>O nome deve ser único no sistema</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i>
+                                {% if profissional %}Atualizar{% else %}Cadastrar{% endif %} Profissional
+                            </button>
+                            <a href="{{ url_for('profissionais') }}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+
+    .alert-info {
+        border-left: 4px solid var(--primary-color);
+    }
+
+    @media (max-width: 768px) {
+        .btn-lg {
+            font-size: 1rem;
+            padding: 0.75rem 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-focus no primeiro campo
+        document.getElementById('nome').focus();
+
+        // Validação do formulário
+        const form = document.getElementById('profissionalForm');
+        form.addEventListener('submit', function(e) {
+            const nome = document.getElementById('nome').value.trim();
+            
+            if (nome.length < 2) {
+                e.preventDefault();
+                alert('O nome deve ter pelo menos 2 caracteres!');
+                document.getElementById('nome').focus();
+                return;
+            }
+
+            // Validar email se preenchido
+            const email = document.getElementById('email').value.trim();
+            if (email && !isValidEmail(email)) {
+                e.preventDefault();
+                alert('Por favor, insira um e-mail válido!');
+                document.getElementById('email').focus();
+                return;
+            }
+        });
+    });
+
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // Formatação do telefone já está na base.html
+    // Adicionar máscara de CPF se necessário futuramente
+</script>
+{% endblock %}
