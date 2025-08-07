@@ -658,6 +658,111 @@ def utility_processor():
         timedelta=timedelta
     )
 
+# ==================== MÓDULO DE ANAMNESES (MENU SEPARADO) ====================
+
+@app.route('/anamneses')
+@login_required
+def listar_anamneses():
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    
+    # Query base com join para pegar dados do paciente
+    query = db.session.query(
+        Anamnese,
+        Paciente.nome.label('paciente_nome'),
+        Paciente.cpf.label('paciente_cpf')
+    ).join(Paciente, Anamnese.paciente_id == Paciente.id)
+    
+    # Aplicar filtro de busca se houver
+    if search:
+        query = query.filter(
+            db.or_(
+                Paciente.nome.ilike(f'%{search}%'),
+                Paciente.cpf.ilike(f'%{search}%'),
+                Anamnese.numero_identificador.ilike(f'%{search}%')
+            )
+        )
+    
+    # Ordenar por data mais recente
+    query = query.order_by(Anamnese.criado_em.desc())
+    
+    # Paginar
+    total = query.count()
+    per_page = 20
+    offset = (page - 1) * per_page
+    items = query.offset(offset).limit(per_page).all()
+    
+    # Criar objeto de paginação manual
+    class PaginationMock:
+        def __init__(self, items, page, per_page, total):
+            self.items = items
+            self.total = total
+            self.pages = max(1, (total + per_page - 1) // per_page)
+            self.page = page
+            self.per_page = per_page
+            self.has_prev = page > 1
+            self.has_next = page < self.pages
+            self.prev_num = page - 1 if self.has_prev else None
+            self.next_num = page + 1 if self.has_next else None
+            
+        def iter_pages(self):
+            for num in range(1, self.pages + 1):
+                yield num
+    
+    anamneses_paginadas = PaginationMock(items, page, per_page, total)
+    
+    return render_template('anamneses/lista.html', 
+                         anamneses=anamneses_paginadas,
+                         search=search)
+
+@app.route('/anamneses/paciente/<int:paciente_id>')
+@login_required
+def anamneses_por_paciente(paciente_id):
+    """Lista todas as anamneses de um paciente específico"""
+    paciente = Paciente.query.get_or_404(paciente_id)
+    
+    anamneses = Anamnese.query.filter_by(paciente_id=paciente_id)\
+                             .order_by(Anamnese.criado_em.desc()).all()
+    
+    return render_template('anamneses/por_paciente.html',
+                         paciente=paciente,
+                         anamneses=anamneses)
+
+@app.route('/anamneses/buscar-pacientes')
+@login_required
+def buscar_pacientes_anamnese():
+    """Busca pacientes para criar nova anamnese"""
+    termo = request.args.get('termo', '')
+    
+    if len(termo) < 2:
+        return jsonify([])
+    
+    pacientes = Paciente.query.filter(
+        db.or_(
+            Paciente.nome.ilike(f'%{termo}%'),
+            Paciente.cpf.ilike(f'%{termo}%')
+        )
+    ).limit(10).all()
+    
+    resultado = []
+    for paciente in pacientes:
+        # Contar anamneses do paciente
+        total_anamneses = Anamnese.query.filter_by(paciente_id=paciente.id).count()
+        
+        resultado.append({
+            'id': paciente.id,
+            'nome': paciente.nome,
+            'cpf': formatar_cpf(paciente.cpf),
+            'idade': calcular_idade(paciente.data_nascimento),
+            'telefone': paciente.telefone or '',
+            'total_anamneses': total_anamneses
+        })
+    
+    return jsonify(resultado)
+
+
+
+
 # ==================== ROTAS DE TESTE ====================
 
 @app.route('/test')
@@ -748,6 +853,63 @@ def novo_atendimento():
             if not paciente_id or not profissional_id:
                 flash('Paciente e Profissional são obrigatórios!', 'error')
                 raise ValueError('Campos obrigatórios não preenchidos')
+                
+            if valor_total <= 0:
+                flash('Valor total deve ser maior que zero!', 'error')
+                raise ValueError('Valor inválido')
+            
+            # Verificar se paciente e profissional existem
+            paciente = Paciente.query.get(paciente_id)
+            profissional = Profissional.query.get(profissional_id)
+            
+            if not paciente:
+                flash('Paciente não encontrado!', 'error')
+                raise ValueError('Paciente inválido')
+                
+            if not profissional or not profissional.ativo:
+                flash('Profissional não encontrado ou inativo!', 'error')
+                raise ValueError('Profissional inválido')
+            
+            # Criar novo atendimento
+            atendimento = Atendimento(
+                paciente_id=paciente_id,
+                profissional_id=profissional_id,
+                data_atendimento=data_atendimento,
+                descricao=descricao,
+                valor_total=valor_total,
+                status='pendente'
+            )
+            
+            db.session.add(atendimento)
+            db.session.commit()
+            
+            flash(f'✅ Atendimento para {paciente.nome} registrado com sucesso!', 'success')
+            
+            # Se clicou em "Registrar e Ir para Pagamento"
+            if 'criar_e_pagar' in request.form:
+                return redirect(url_for('novo_pagamento', atendimento_id=atendimento.id))
+            
+            return redirect(url_for('atendimentos'))
+            
+        except ValueError as ve:
+            # Erro de validação - não faz rollback
+            pass
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ Erro ao registrar atendimento: {str(e)}', 'error')
+    
+    # GET - Exibir formulário
+    # Buscar pacientes com suas observações
+    pacientes = db.session.query(Paciente.id, Paciente.nome, Paciente.cpf, Paciente.observacoes)\
+                          .order_by(Paciente.nome).all()
+    
+    profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
+    procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
+    
+    return render_template('atendimentos/form.html', 
+                         pacientes=pacientes, 
+                         profissionais=profissionais, 
+                         procedimentos=procedimentos)
                 
             if valor_total <= 0:
                 flash('Valor total deve ser maior que zero!', 'error')
@@ -1025,8 +1187,12 @@ def novo_pagamento(atendimento_id):
             atendimento = Atendimento.query.get_or_404(atendimento_id)
             
             # Calcular valores já pagos
-            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
-            valor_ja_pago = sum(float(p.valor) for p in pagamentos_existentes)
+            try:
+                pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
+                valor_ja_pago = sum(float(p.valor) for p in pagamentos_existentes)
+            except:
+                valor_ja_pago = 0
+                
             valor_pendente = float(atendimento.valor_total) - valor_ja_pago
             
             # Validações
@@ -1055,7 +1221,7 @@ def novo_pagamento(atendimento_id):
             
             # Atualizar status do atendimento
             novo_valor_pago = valor_ja_pago + valor
-            if novo_valor_pago >= float(atendimento.valor_total):
+            if abs(novo_valor_pago - float(atendimento.valor_total)) < 0.01:  # Considera diferenças de centavos
                 atendimento.status = 'pago'
                 status_msg = 'totalmente pago'
             else:
@@ -1067,12 +1233,13 @@ def novo_pagamento(atendimento_id):
             # Buscar dados do paciente para a mensagem
             paciente = Paciente.query.get(atendimento.paciente_id)
             
-            flash(f'Pagamento de R$ {valor:.2f} registrado! Atendimento de {paciente.nome} agora está {status_msg}.', 'success')
+            flash(f'💰 Pagamento de R$ {valor:.2f} registrado com sucesso!', 'success')
+            flash(f'📊 Atendimento de {paciente.nome} agora está {status_msg}.', 'info')
             
-            # Se ainda há valor pendente, perguntar se quer continuar pagando
-            if novo_valor_pago < float(atendimento.valor_total):
-                valor_restante = float(atendimento.valor_total) - novo_valor_pago
-                flash(f'Valor restante: R$ {valor_restante:.2f}', 'info')
+            # Se ainda há valor pendente significativo, oferecer continuar pagando
+            valor_restante = float(atendimento.valor_total) - novo_valor_pago
+            if valor_restante > 0.01:
+                flash(f'💡 Valor restante: R$ {valor_restante:.2f}', 'warning')
                 return redirect(url_for('novo_pagamento', atendimento_id=atendimento_id))
             else:
                 return redirect(url_for('ver_atendimento', id=atendimento_id))
@@ -1082,11 +1249,11 @@ def novo_pagamento(atendimento_id):
             pass
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro ao registrar pagamento: {str(e)}', 'error')
+            flash(f'❌ Erro ao registrar pagamento: {str(e)}', 'error')
     
     # GET - Exibir formulário
     try:
-        # Buscar atendimento
+        # Buscar atendimento com dados relacionados
         atendimento_data = db.session.query(
             Atendimento,
             Paciente.nome.label('paciente_nome'),
@@ -1097,25 +1264,28 @@ def novo_pagamento(atendimento_id):
          .filter(Atendimento.id == atendimento_id).first()
         
         if not atendimento_data:
-            flash('Atendimento não encontrado!', 'error')
+            flash('❌ Atendimento não encontrado!', 'error')
             return redirect(url_for('atendimentos'))
         
-        # Calcular valores pagos
+        # Calcular valores e buscar histórico de pagamentos
         try:
-            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id).all()
+            pagamentos_existentes = Pagamento.query.filter_by(atendimento_id=atendimento_id)\
+                                                   .order_by(Pagamento.criado_em.desc()).all()
             valor_pago = sum(float(p.valor) for p in pagamentos_existentes)
         except:
+            pagamentos_existentes = []
             valor_pago = 0
             
-        valor_pendente = float(atendimento_data.Atendimento.valor_total) - valor_pago
+        valor_pendente = max(0, float(atendimento_data.Atendimento.valor_total) - valor_pago)
         
         return render_template('pagamentos/form.html', 
                              atendimento=atendimento_data,
                              valor_pago=valor_pago,
-                             valor_pendente=max(0, valor_pendente))
+                             valor_pendente=valor_pendente,
+                             historico_pagamentos=pagamentos_existentes)
         
     except Exception as e:
-        flash(f'Erro ao buscar dados do pagamento: {str(e)}', 'error')
+        flash(f'❌ Erro ao buscar dados do pagamento: {str(e)}', 'error')
         return redirect(url_for('atendimentos'))
 
 # ==================== MÓDULO DE RELATÓRIOS ====================

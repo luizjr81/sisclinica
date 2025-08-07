@@ -25,7 +25,10 @@
                                 <select class="form-control" id="paciente_id" name="paciente_id" required>
                                     <option value="">Selecione o paciente...</option>
                                     {% for paciente in pacientes %}
-                                    <option value="{{ paciente.id }}" data-observacoes="{{ paciente.observacoes or '' }}">
+                                    <option value="{{ paciente.id }}" 
+                                            data-observacoes="{{ paciente.observacoes or '' }}"
+                                            data-nome="{{ paciente.nome }}"
+                                            data-cpf="{{ paciente.cpf }}">
                                         {{ paciente.nome }} - {{ formatar_cpf(paciente.cpf) }}
                                     </option>
                                     {% endfor %}

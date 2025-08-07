@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Anamneses de {{ paciente.nome }} - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-file-medical me-2"></i>Anamneses de {{ paciente.nome }}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Informações do Paciente -->
+    <div class="card mb-4 bg-primary text-white">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4 class="mb-1">
+                        <i class="fas fa-user me-2"></i>{{ paciente.nome }}
+                    </h4>
+                    <p class="mb-0">
+                        <strong>CPF:</strong> {{ formatar_cpf(paciente.cpf) }} | 
+                        <strong>Idade:</strong> {{ calcular_idade(paciente.data_nascimento) }} anos |
+                        <strong>Telefone:</strong> {{ paciente.telefone or 'Não informado' }}
+                    </p>
+                    {% if paciente.gosto_musical %}
+                        <small><strong>Gosto Musical:</strong> {{ paciente.gosto_musical }}</small>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="h3 mb-0">{{ anamneses|length }}</div>
+                    <div>Anamnese(s) Registrada(s)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            {% if paciente.observacoes %}
+            <div class="alert alert-info">
+                <h6 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>Observações do Paciente
+                </h6>
+                <p class="mb-0">{{ paciente.observacoes }}</p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('nova_anamnese', paciente_id=paciente.id) }}" class="btn btn-success">
+                    <i class="fas fa-plus me-2"></i>Nova Anamnese
+                </a>
+                <a href="{{ url_for('listar_anamneses') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Anamneses -->
+    <div class="row">
+        <div class="col-12">
+            {% if anamneses %}
+                {% for anamnese in anamneses %}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">
+                                <i class="fas fa-file-medical text-primary me-2"></i>
+                                <strong>{{ anamnese.numero_identificador }}</strong>
+                            </h6>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="text-muted small">
+                                {% if anamnese.atualizado_em != anamnese.criado_em %}
+                                    <i class="fas fa-edit me-1"></i>Atualizada em {{ anamnese.atualizado_em.strftime('%d/%m/%Y às %H:%M') }}
+                                {% else %}
+                                    <i class="fas fa-calendar me-1"></i>Criada em {{ anamnese.criado_em.strftime('%d/%m/%Y às %H:%M') }}
+                                {% endif %}
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('ver_anamnese', id=anamnese.id) }}" 
+                                   class="btn btn-outline-info" title="Ver detalhes">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('editar_anamnese', id=anamnese.id) }}" 
+                                   class="btn btn-outline-primary" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if anamnese.conteudo %}
+                            <div class="anamnese-preview">
+                                {% if anamnese.conteudo|length > 300 %}
+                                    <div id="preview-{{ anamnese.id }}">
+                                        {{ anamnese.conteudo[:300] }}...
+                                        <br><br>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="expandirAnamnese({{ anamnese.id }})">
+                                            <i class="fas fa-expand-alt me-1"></i>Ver Completo
+                                        </button>
+                                    </div>
+                                    <div id="completo-{{ anamnese.id }}" style="display: none;">
+                                        {{ anamnese.conteudo|nl2br }}
+                                        <br><br>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="recolherAnamnese({{ anamnese.id }})">
+                                            <i class="fas fa-compress-alt me-1"></i>Recolher
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    {{ anamnese.conteudo|nl2br }}
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="text-muted text-center py-3">
+                                <i class="fas fa-file-alt fa-2x mb-2"></i>
+                                <p>Esta anamnese não possui conteúdo registrado.</p>
+                                <a href="{{ url_for('editar_anamnese', id=anamnese.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit me-1"></i>Adicionar Conteúdo
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Estado vazio -->
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-file-medical fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">Nenhuma anamnese registrada</h4>
+                        <p class="text-muted">{{ paciente.nome }} ainda não possui anamneses registradas.</p>
+                        <a href="{{ url_for('nova_anamnese', paciente_id=paciente.id) }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-plus me-2"></i>Criar Primeira Anamnese
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ações do rodapé -->
+    {% if anamneses %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Histórico Completo
+                            </h6>
+                            <small class="text-muted">
+                                Total de {{ anamneses|length }} anamnese(s) registrada(s) para {{ paciente.nome }}
+                            </small>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <div class="btn-group">
+                                <button class="btn btn-outline-primary" onclick="imprimirTudo()" title="Imprimir todas">
+                                    <i class="fas fa-print me-1"></i>Imprimir Todas
+                                </button>
+                                <button class="btn btn-outline-success" onclick="exportarPDF()" title="Exportar PDF">
+                                    <i class="fas fa-file-pdf me-1"></i>Exportar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .anamnese-preview {
+        white-space: pre-wrap;
+        line-height: 1.6;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: box-shadow 0.3s ease;
+    }
+
+    @media print {
+        .btn, .card-header .btn-group, .alert {
+            display: none !important;
+        }
+        
+        .card {
+            break-inside: avoid;
+            margin-bottom: 20px;
+            box-shadow: none;
+            border: 1px solid #ccc;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function expandirAnamnese(id) {
+        document.getElementById(`preview-${id}`).style.display = 'none';
+        document.getElementById(`completo-${id}`).style.display = 'block';
+    }
+
+    function recolherAnamnese(id) {
+        document.getElementById(`preview-${id}`).style.display = 'block';
+        document.getElementById(`completo-${id}`).style.display = 'none';
+    }
+
+    function imprimirTudo() {
+        // Expandir todas as anamneses antes de imprimir
+        const previews = document.querySelectorAll('[id^="preview-"]');
+        const completos = document.querySelectorAll('[id^="completo-"]');
+        
+        previews.forEach(preview => preview.style.display = 'none');
+        completos.forEach(completo => completo.style.display = 'block');
+        
+        setTimeout(() => {
+            window.print();
+            
+            // Voltar ao estado original após impressão
+            setTimeout(() => {
+                previews.forEach(preview => preview.style.display = 'block');
+                completos.forEach(completo => completo.style.display = 'none');
+            }, 1000);
+        }, 500);
+    }
+
+    function exportarPDF() {
+        alert('💡 Funcionalidade de exportação para PDF em desenvolvimento.\n\nPor enquanto, use "Imprimir Todas" e selecione "Salvar como PDF" na impressora.');
+    }
+
+    // Atalhos de teclado
+    document.addEventListener('keydown', function(e) {
+        // Ctrl + N = Nova anamnese
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = '{{ url_for("nova_anamnese", paciente_id=paciente.id) }}';
+        }
+        
+        // Ctrl + P = Imprimir
+        if (e.ctrlKey && e.key === 'p') {
+            e.preventDefault();
+            imprimirTudo();
+        }
+    });
+</script>
+{% endblock %}

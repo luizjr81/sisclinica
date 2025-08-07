@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Anamneses - Sistema Clínica Estética{% endblock %}
+
+{% block page_title %}Gerenciar Anamneses{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-8">
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="Buscar por paciente, CPF ou número da anamnese..." 
+                                   value="{{ search }}"
+                                   autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-primary w-100" type="submit">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex justify-content-end gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-success btn-lg dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-plus me-2"></i>Nova Anamnese
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">Selecionar Paciente</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="buscarPacienteModal()">
+                            <i class="fas fa-search me-2"></i>Buscar Paciente
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('pacientes') }}">
+                            <i class="fas fa-user-plus me-2"></i>Cadastrar Paciente Primeiro
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number">{{ anamneses.total }}</div>
+                        <div class="stat-label">Total de Anamneses</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-file-medical fa-2x" style="color: var(--primary-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--accent-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--accent-color);">
+                            {% set pacientes_com_anamnese = anamneses.items | map(attribute='paciente_nome') | unique | list %}
+                            {{ pacientes_com_anamnese | length }}
+                        </div>
+                        <div class="stat-label">Pacientes com Anamnese</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-users fa-2x" style="color: var(--accent-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--warning-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--warning-color);">
+                            {% set esta_semana = anamneses.items | selectattr('Anamnese.criado_em', 'ge', (date.today() - timedelta(days=7))) | list %}
+                            {{ esta_semana | length }}
+                        </div>
+                        <div class="stat-label">Esta Semana</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-week fa-2x" style="color: var(--warning-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="stat-card" style="border-left-color: var(--danger-color);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="stat-number" style="color: var(--danger-color);">
+                            {% set hoje = anamneses.items | selectattr('Anamnese.criado_em', 'ge', date.today()) | list %}
+                            {{ hoje | length }}
+                        </div>
+                        <div class="stat-label">Hoje</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-day fa-2x" style="color: var(--danger-color);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Anamneses -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-medical me-2"></i>Lista de Anamneses
+                        {% if search %}
+                            <small class="text-muted">(Busca: "{{ search }}")</small>
+                        {% endif %}
+                    </h5>
+                    <span class="badge bg-primary fs-6">
+                        {{ anamneses.total }} anamnese(s)
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    {% if anamneses.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Identificador</th>
+                                        <th>Paciente</th>
+                                        <th>Criada em</th>
+                                        <th>Atualizada em</th>
+                                        <th>Prévia do Conteúdo</th>
+                                        <th width="150">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for anamnese, paciente_nome, paciente_cpf in anamneses.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="document-icon bg-primary text-white rounded me-3">
+                                                    <i class="fas fa-file-medical"></i>
+                                                </div>
+                                                <div>
+                                                    <strong class="text-primary">{{ anamnese.numero_identificador }}</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ paciente_nome }}</strong>
+                                                <br><small class="text-muted">{{ formatar_cpf(paciente_cpf) }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong>{{ anamnese.criado_em.strftime('%d/%m/%Y') }}</strong>
+                                            <br><small class="text-muted">{{ anamnese.criado_em.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            {% if anamnese.atualizado_em != anamnese.criado_em %}
+                                                <strong class="text-warning">{{ anamnese.atualizado_em.strftime('%d/%m/%Y') }}</strong>
+                                                <br><small class="text-muted">{{ anamnese.atualizado_em.strftime('%H:%M') }}</small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if anamnese.conteudo %}
+                                                <div class="text-truncate" style="max-width: 200px;" title="{{ anamnese.conteudo }}">
+                                                    {{ anamnese.conteudo[:100] }}{% if anamnese.conteudo|length > 100 %}...{% endif %}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">Sem conteúdo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('ver_anamnese', id=anamnese.id) }}" 
+                                                   class="btn btn-outline-info" title="Ver detalhes">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ url_for('editar_anamnese', id=anamnese.id) }}" 
+                                                   class="btn btn-outline-primary" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{{ url_for('anamneses_por_paciente', paciente_id=anamnese.paciente_id) }}" 
+                                                   class="btn btn-outline-success" title="Ver todas do paciente">
+                                                    <i class="fas fa-list"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if anamneses.pages > 1 %}
+                        <div class="card-footer">
+                            <nav>
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if anamneses.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('listar_anamneses', page=anamneses.prev_num, search=search) }}">
+                                                <i class="fas fa-chevron-left"></i> Anterior
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for page_num in anamneses.iter_pages() %}
+                                        {% if page_num != anamneses.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('listar_anamneses', page=page_num, search=search) }}">
+                                                    {{ page_num }}
+                                                </a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if anamneses.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('listar_anamneses', page=anamneses.next_num, search=search) }}">
+                                                Próximo <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <!-- Empty State -->
+                        <div class="text-center py-5">
+                            {% if search %}
+                                <i class="fas fa-search-minus fa-4x text-muted mb-3"></i>
+                                <h4 class="text-muted">Nenhuma anamnese encontrada</h4>
+                                <p class="text-muted">Ajuste os filtros ou realize uma nova busca</p>
+                                <a href="{{ url_for('listar_anamneses') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-times me-2"></i>Limpar Busca
+                                </a>
+                            {% else %}
+                                <i class="fas fa-file-medical fa-4x text-muted mb-3"></i>
+                                <h4 class="text-muted">Nenhuma anamnese registrada</h4>
+                                <p class="text-muted">Comece criando a primeira anamnese</p>
+                                <button class="btn btn-primary btn-lg" onclick="buscarPacienteModal()">
+                                    <i class="fas fa-plus me-2"></i>Criar Primeira Anamnese
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para buscar paciente -->
+<div class="modal fade" id="buscarPacienteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-search me-2"></i>Buscar Paciente para Nova Anamnese
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="buscaPaciente" 
+                           placeholder="Digite o nome ou CPF do paciente..." autocomplete="off">
+                </div>
+                <div id="resultadosBusca"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .document-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .btn-group-sm > .btn {
+        padding: 0.375rem 0.5rem;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        transition: transform 0.3s ease;
+    }
+
+    .paciente-item {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .paciente-item:hover {
+        background-color: rgba(139, 92, 246, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function buscarPacienteModal() {
+        document.getElementById('buscarPacienteModal').classList.add('show');
+        document.getElementById('buscarPacienteModal').style.display = 'block';
+        document.body.classList.add('modal-open');
+        
+        // Focus no campo de busca
+        setTimeout(() => {
+            document.getElementById('buscaPaciente').focus();
+        }, 300);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = new bootstrap.Modal(document.getElementById('buscarPacienteModal'));
+        const inputBusca = document.getElementById('buscaPaciente');
+        const resultados = document.getElementById('resultadosBusca');
+
+        // Busca em tempo real
+        let timeoutBusca;
+        inputBusca.addEventListener('input', function() {
+            const termo = this.value.trim();
+            
+            clearTimeout(timeoutBusca);
+            
+            if (termo.length < 2) {
+                resultados.innerHTML = '<p class="text-muted text-center">Digite pelo menos 2 caracteres para buscar...</p>';
+                return;
+            }
+
+            timeoutBusca = setTimeout(() => {
+                fetch(`/anamneses/buscar-pacientes?termo=${encodeURIComponent(termo)}`)
+                    .then(response => response.json())
+                    .then(pacientes => {
+                        if (pacientes.length === 0) {
+                            resultados.innerHTML = '<p class="text-muted text-center">Nenhum paciente encontrado.</p>';
+                            return;
+                        }
+
+                        let html = '<div class="list-group">';
+                        pacientes.forEach(paciente => {
+                            html += `
+                                <div class="list-group-item list-group-item-action paciente-item" 
+                                     onclick="selecionarPaciente(${paciente.id})">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">${paciente.nome}</h6>
+                                            <small class="text-muted">${paciente.cpf} • ${paciente.idade} anos</small>
+                                            ${paciente.telefone ? `<br><small class="text-muted"><i class="fas fa-phone"></i> ${paciente.telefone}</small>` : ''}
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-info">${paciente.total_anamneses} anamnese(s)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        
+                        resultados.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Erro na busca:', error);
+                        resultados.innerHTML = '<p class="text-danger text-center">Erro ao buscar pacientes.</p>';
+                    });
+            }, 300);
+        });
+    });
+
+    function selecionarPaciente(pacienteId) {
+        window.location.href = `/anamnese/${pacienteId}/nova`;
+    }
+
+    // Auto-focus search input
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput && !searchInput.value) {
+            searchInput.focus();
+        }
+    });
+</script>
+{% endblock %}

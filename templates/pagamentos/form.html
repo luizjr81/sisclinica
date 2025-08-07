@@ -9,7 +9,7 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row justify-content-center">
-        <div class="col-xl-8 col-lg-10">
+        <div class="col-xl-10 col-lg-12">
             <!-- Informações do Atendimento -->
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
@@ -41,11 +41,11 @@
                                 <label class="text-muted small">Status Atual</label>
                                 <div>
                                     {% if atendimento.Atendimento.status == 'pago' %}
-                                        <span class="badge bg-success">Pago</span>
+                                        <span class="badge bg-success fs-6">✅ Pago</span>
                                     {% elif atendimento.Atendimento.status == 'parcial' %}
-                                        <span class="badge bg-warning">Pago Parcial</span>
+                                        <span class="badge bg-warning fs-6">⏳ Pago Parcial</span>
                                     {% else %}
-                                        <span class="badge bg-danger">Pendente</span>
+                                        <span class="badge bg-danger fs-6">❌ Pendente</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -65,32 +65,89 @@
                     <div class="row text-center">
                         <div class="col-md-4">
                             <div class="financial-stat">
-                                <div class="value text-primary fs-4">R$ {{ "%.2f"|format(atendimento.Atendimento.valor_total) }}</div>
-                                <div class="label">Valor Total</div>
+                                <div class="value text-primary fs-3">R$ {{ "%.2f"|format(atendimento.Atendimento.valor_total) }}</div>
+                                <div class="label">💰 Valor Total</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="financial-stat">
-                                <div class="value text-success fs-4">R$ {{ "%.2f"|format(valor_pago) }}</div>
-                                <div class="label">Já Pago</div>
+                                <div class="value text-success fs-3">R$ {{ "%.2f"|format(valor_pago) }}</div>
+                                <div class="label">✅ Já Pago</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="financial-stat">
-                                <div class="value text-danger fs-4">R$ {{ "%.2f"|format(valor_pendente) }}</div>
-                                <div class="label">Valor Pendente</div>
+                                <div class="value text-danger fs-3">R$ {{ "%.2f"|format(valor_pendente) }}</div>
+                                <div class="label">⏰ Valor Pendente</div>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Barra de Progresso -->
+                    <div class="mt-4">
+                        {% set progresso = (valor_pago / atendimento.Atendimento.valor_total * 100) if atendimento.Atendimento.valor_total > 0 else 0 %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small">Progresso do Pagamento</span>
+                            <span class="small fw-bold">{{ "%.1f"|format(progresso) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar {% if progresso >= 100 %}bg-success{% elif progresso >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 role="progressbar" style="width: {{ progresso }}%"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Formulário de Pagamento -->
-            {% if valor_pendente > 0 %}
-            <div class="card">
+            <!-- Histórico de Pagamentos -->
+            {% if historico_pagamentos %}
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-credit-card me-2"></i>Registrar Novo Pagamento
+                        <i class="fas fa-history me-2"></i>Histórico de Pagamentos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Forma</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pagamento in historico_pagamentos %}
+                                <tr>
+                                    <td>{{ pagamento.data_pagamento.strftime('%d/%m/%Y') }}</td>
+                                    <td><span class="text-success fw-bold">R$ {{ "%.2f"|format(pagamento.valor) }}</span></td>
+                                    <td>
+                                        {% if pagamento.forma_pagamento == 'dinheiro' %}💵 Dinheiro
+                                        {% elif pagamento.forma_pagamento == 'cartao_debito' %}💳 Cartão Débito
+                                        {% elif pagamento.forma_pagamento == 'cartao_credito' %}💳 Cartão Crédito
+                                        {% elif pagamento.forma_pagamento == 'pix' %}📱 PIX
+                                        {% elif pagamento.forma_pagamento == 'transferencia' %}🏦 Transferência
+                                        {% elif pagamento.forma_pagamento == 'cheque' %}📄 Cheque
+                                        {% else %}{{ pagamento.forma_pagamento|title }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ pagamento.observacoes or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Formulário de Pagamento -->
+            {% if valor_pendente > 0.01 %}
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Registrar Novo Pagamento
                     </h5>
                 </div>
                 <div class="card-body">
@@ -108,7 +165,7 @@
                                            value="{{ valor_pendente }}" required>
                                 </div>
                                 <div class="form-text">
-                                    Máximo: R$ {{ "%.2f"|format(valor_pendente) }}
+                                    💡 Máximo disponível: <strong>R$ {{ "%.2f"|format(valor_pendente) }}</strong>
                                 </div>
                             </div>
 
@@ -141,13 +198,16 @@
 
                             <!-- Pagamento rápido -->
                             <div class="col-md-6 mb-4">
-                                <label class="form-label">Pagamento Rápido</label>
-                                <div class="d-flex gap-2">
+                                <label class="form-label">⚡ Ações Rápidas</label>
+                                <div class="d-flex gap-2 flex-wrap">
                                     <button type="button" class="btn btn-outline-success btn-sm" onclick="pagarTotal()">
-                                        Pagar Total
+                                        💰 Quitar Total
                                     </button>
                                     <button type="button" class="btn btn-outline-info btn-sm" onclick="pagarMetade()">
-                                        Pagar 50%
+                                        📊 Pagar 50%
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="pagarCustom(100)">
+                                        💵 R$ 100
                                     </button>
                                 </div>
                             </div>
@@ -166,28 +226,28 @@
                         <div class="card bg-light mb-4">
                             <div class="card-body">
                                 <h6 class="card-title">
-                                    <i class="fas fa-receipt me-2"></i>Resumo do Pagamento
+                                    <i class="fas fa-receipt me-2"></i>Prévia do Pagamento
                                 </h6>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="d-flex justify-content-between">
-                                            <span>Valor a pagar:</span>
-                                            <span class="fw-bold" id="resumo-valor">R$ {{ "%.2f"|format(valor_pendente) }}</span>
+                                        <div class="d-flex justify-content-between py-1">
+                                            <span>💰 Valor a pagar:</span>
+                                            <span class="fw-bold text-success" id="resumo-valor">R$ {{ "%.2f"|format(valor_pendente) }}</span>
                                         </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span>Forma de pagamento:</span>
+                                        <div class="d-flex justify-content-between py-1">
+                                            <span>💳 Forma de pagamento:</span>
                                             <span class="fw-bold" id="resumo-forma">-</span>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="d-flex justify-content-between">
-                                            <span>Valor restante após pagamento:</span>
-                                            <span class="fw-bold text-success" id="resumo-restante">R$ 0,00</span>
+                                        <div class="d-flex justify-content-between py-1">
+                                            <span>⏰ Valor que restará:</span>
+                                            <span class="fw-bold" id="resumo-restante">R$ 0,00</span>
                                         </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span>Status final:</span>
+                                        <div class="d-flex justify-content-between py-1">
+                                            <span>📊 Status final:</span>
                                             <span class="fw-bold" id="resumo-status">
-                                                <span class="badge bg-success">Pago</span>
+                                                <span class="badge bg-success">✅ Pago</span>
                                             </span>
                                         </div>
                                     </div>
@@ -198,11 +258,11 @@
                         <!-- Botões -->
                         <div class="d-flex gap-2 justify-content-between">
                             <a href="{{ url_for('ver_atendimento', id=atendimento.Atendimento.id) }}" class="btn btn-secondary">
-                                <i class="fas fa-times me-2"></i>Cancelar
+                                <i class="fas fa-arrow-left me-2"></i>Voltar
                             </a>
                             
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-check me-2"></i>Confirmar Pagamento
+                                <i class="fas fa-check me-2"></i>💰 Confirmar Pagamento
                             </button>
                         </div>
                     </form>
@@ -211,15 +271,20 @@
             {% else %}
             <!-- Atendimento já está pago -->
             <div class="card">
-                <div class="card-body text-center">
+                <div class="card-body text-center py-5">
                     <div class="mb-4">
-                        <i class="fas fa-check-circle fa-4x text-success"></i>
+                        <i class="fas fa-check-circle fa-5x text-success"></i>
                     </div>
-                    <h4 class="text-success">Atendimento Totalmente Pago</h4>
-                    <p class="text-muted">Este atendimento já foi quitado completamente.</p>
-                    <a href="{{ url_for('atendimentos') }}" class="btn btn-primary">
-                        <i class="fas fa-arrow-left me-2"></i>Voltar para Atendimentos
-                    </a>
+                    <h3 class="text-success">🎉 Atendimento Totalmente Quitado!</h3>
+                    <p class="text-muted fs-5">Este atendimento já foi pago completamente.</p>
+                    <div class="mt-4">
+                        <a href="{{ url_for('atendimentos') }}" class="btn btn-primary me-3">
+                            <i class="fas fa-list me-2"></i>Ver Todos os Atendimentos
+                        </a>
+                        <a href="{{ url_for('ver_atendimento', id=atendimento.Atendimento.id) }}" class="btn btn-outline-primary">
+                            <i class="fas fa-eye me-2"></i>Ver Detalhes do Atendimento
+                        </a>
+                    </div>
                 </div>
             </div>
             {% endif %}
@@ -234,7 +299,6 @@
     }
 
     .financial-stat .value {
-        font-size: 1.5rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
     }
@@ -256,6 +320,10 @@
         margin-bottom: 0.25rem;
         display: block;
     }
+
+    .progress {
+        border-radius: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -273,13 +341,13 @@
 
             document.getElementById('resumo-valor').textContent = `R$ ${valor.toFixed(2).replace('.', ',')}`;
             document.getElementById('resumo-forma').textContent = forma === 'Selecione...' ? '-' : forma;
-            document.getElementById('resumo-restante').textContent = `R$ ${restante.toFixed(2).replace('.', ',')}`;
+            document.getElementById('resumo-restante').textContent = `R$ ${Math.max(0, restante).toFixed(2).replace('.', ',')}`;
             
             const statusBadge = document.getElementById('resumo-status');
-            if (restante <= 0) {
-                statusBadge.innerHTML = '<span class="badge bg-success">Pago</span>';
+            if (restante <= 0.01) {
+                statusBadge.innerHTML = '<span class="badge bg-success">✅ Pago</span>';
             } else {
-                statusBadge.innerHTML = '<span class="badge bg-warning">Parcial</span>';
+                statusBadge.innerHTML = '<span class="badge bg-warning">⏳ Parcial</span>';
             }
         }
 
@@ -294,23 +362,29 @@
                 
                 if (valor <= 0) {
                     e.preventDefault();
-                    alert('O valor do pagamento deve ser maior que zero!');
+                    alert('⚠️ O valor do pagamento deve ser maior que zero!');
                     valorInput.focus();
                     return;
                 }
 
                 if (valor > valorPendente) {
                     e.preventDefault();
-                    alert(`O valor não pode ser maior que o pendente (R$ ${valorPendente.toFixed(2)})`);
+                    alert(`⚠️ O valor não pode ser maior que o pendente (R$ ${valorPendente.toFixed(2)})`);
                     valorInput.focus();
                     return;
                 }
 
                 if (!formaSelect.value) {
                     e.preventDefault();
-                    alert('Selecione a forma de pagamento!');
+                    alert('⚠️ Selecione a forma de pagamento!');
                     formaSelect.focus();
                     return;
+                }
+
+                // Confirmação final
+                const forma = formaSelect.options[formaSelect.selectedIndex].text;
+                if (!confirm(`💰 Confirmar pagamento de R$ ${valor.toFixed(2)} via ${forma}?`)) {
+                    e.preventDefault();
                 }
             });
         }
@@ -327,6 +401,13 @@
     function pagarMetade() {
         const metade = {{ valor_pendente }} / 2;
         document.getElementById('valor').value = metade.toFixed(2);
+        document.getElementById('valor').dispatchEvent(new Event('input'));
+    }
+
+    function pagarCustom(valor) {
+        const maxValor = {{ valor_pendente }};
+        const valorFinal = Math.min(valor, maxValor);
+        document.getElementById('valor').value = valorFinal.toFixed(2);
         document.getElementById('valor').dispatchEvent(new Event('input'));
     }
 </script>
