@@ -910,60 +910,6 @@ def novo_atendimento():
                          pacientes=pacientes, 
                          profissionais=profissionais, 
                          procedimentos=procedimentos)
-                
-            if valor_total <= 0:
-                flash('Valor total deve ser maior que zero!', 'error')
-                raise ValueError('Valor inválido')
-            
-            # Verificar se paciente e profissional existem
-            paciente = Paciente.query.get(paciente_id)
-            profissional = Profissional.query.get(profissional_id)
-            
-            if not paciente:
-                flash('Paciente não encontrado!', 'error')
-                raise ValueError('Paciente inválido')
-                
-            if not profissional or not profissional.ativo:
-                flash('Profissional não encontrado ou inativo!', 'error')
-                raise ValueError('Profissional inválido')
-            
-            # Criar novo atendimento
-            atendimento = Atendimento(
-                paciente_id=paciente_id,
-                profissional_id=profissional_id,
-                data_atendimento=data_atendimento,
-                descricao=descricao,
-                valor_total=valor_total,
-                status='pendente'
-            )
-            
-            db.session.add(atendimento)
-            db.session.commit()
-            
-            flash(f'Atendimento para {paciente.nome} registrado com sucesso!', 'success')
-            
-            # Se clicou em "Registrar e Ir para Pagamento"
-            if 'criar_e_pagar' in request.form:
-                return redirect(url_for('novo_pagamento', atendimento_id=atendimento.id))
-            
-            return redirect(url_for('atendimentos'))
-            
-        except ValueError as ve:
-            # Erro de validação - não faz rollback
-            pass
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao registrar atendimento: {str(e)}', 'error')
-    
-    # GET - Exibir formulário
-    pacientes = Paciente.query.order_by(Paciente.nome).all()
-    profissionais = Profissional.query.filter_by(ativo=True).order_by(Profissional.nome).all()
-    procedimentos = Procedimento.query.filter_by(ativo=True).order_by(Procedimento.nome).all()
-    
-    return render_template('atendimentos/form.html', 
-                         pacientes=pacientes, 
-                         profissionais=profissionais, 
-                         procedimentos=procedimentos)
 
 @app.route('/atendimentos/<int:id>')
 @login_required
